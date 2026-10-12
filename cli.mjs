@@ -8,9 +8,9 @@ import {Worker} from 'node:worker_threads';
 import {reportFromMemory} from './lib/fixture.mjs';
 
 const ROOT=new URL('./',import.meta.url),MODULE_BYTES=8*1024*1024,WORKSPACE_BYTES=64*1024*1024,MEMORY_BYTES=32*1024*1024;
-const DEADLINE_MS=30000,MAX_BRANCHES=12,POLICY='closed-wasm32-pure-accessors-v2';
+const DEADLINE_MS=30000,PREPARATION_DEADLINE_MS=90000,MAX_BRANCHES=12,POLICY='closed-wasm32-pure-accessors-v2';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-const help=`Forkwake: fork one paused, owned WebAssembly continuation\n\nUsage:\n  forkwake serve [--port 6350]\n  forkwake demo --out <new directory> [--memory]\n  forkwake run --module <wasm> --input <signed i32> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n  forkwake resume --workspace <workspace.forkwake> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n\nOutputs: workspace.forkwake and outcomes.json. --memory also writes actual final-memory binaries. Existing output directories are refused.\n\nThe guest ABI is run(i32)->i32, header_address()->i32, asyncify_capacity()->i32, an owned bounded wasm32 memory, and exact owned env effect imports. One pending cut is supported. Native processes, files, network connections and threads are not cloned.\n\nPortable resume independently re-executes and validates the original prefix once. Its subsequent sibling branches resume the validated cut without replaying that prefix. Each worker has a 30-second deadline.\n`;
+const help=`Forkwake: fork one paused, owned WebAssembly continuation\n\nUsage:\n  forkwake serve [--port 6350]\n  forkwake demo --out <new directory> [--memory]\n  forkwake run --module <wasm> --input <signed i32> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n  forkwake resume --workspace <workspace.forkwake> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n\nOutputs: workspace.forkwake and outcomes.json. --memory also writes actual final-memory binaries. Existing output directories are refused.\n\nThe guest ABI is run(i32)->i32, header_address()->i32, asyncify_capacity()->i32, an owned bounded wasm32 memory, and exact owned env effect imports. One pending cut is supported. Native processes, files, network connections and threads are not cloned.\n\nPortable resume independently re-executes and validates the original prefix once. Its subsequent sibling branches resume the validated cut without replaying that prefix. Validation and transformation have a 90-second preparation deadline; guest execution has a separate 30-second deadline.\n`;
 function exact(value,keys,label){if(!value||typeof value!=='object'||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==keys.length||keys.some(key=>!Object.hasOwn(value,key)))throw Error(`Invalid ${label} fields`);}
 function i32Text(text,label){if(typeof text!=='string'||!/^(?:0|-[1-9][0-9]{0,9}|[1-9][0-9]{0,9})$/.test(text))throw Error(`${label} must be a decimal signed i32`);const value=Number(text);if(!Number.isInteger(value)||value< -2147483648||value>2147483647)throw Error(`${label} is outside the signed i32 range`);return value;}
 function responses(text){const parts=text.split(',');if(!parts.length||parts.length>MAX_BRANCHES)throw Error(`Choose between one and ${MAX_BRANCHES} responses`);return parts.map(part=>i32Text(part,'Response'));}
@@ -52,15 +52,29 @@ function validateWorkspace(workspace){
  return bytes;
 }
 /** Trusted owner configuration stays outside guest request/workspace JSON. */
-export function workerJob(request,{snapshotKey,trustedPrepared,signal,deadlineMs=DEADLINE_MS}={}){
+export function workerJob(request,{snapshotKey,trustedPrepared,signal,deadlineMs=DEADLINE_MS,prepareDeadlineMs=PREPARATION_DEADLINE_MS,onExecution}={}){
  if(signal?.aborted)return Promise.reject(Error('Interrupted before the worker started'));
+ if(!Number.isInteger(deadlineMs)||deadlineMs<1||deadlineMs>2147483647||!Number.isInteger(prepareDeadlineMs)||prepareDeadlineMs<1||prepareDeadlineMs>2147483647)return Promise.reject(Error('Worker deadlines must be positive bounded integer milliseconds'));
+ if(onExecution!==undefined&&typeof onExecution!=='function')return Promise.reject(Error('Execution observer must be a trusted owner callback'));
  return new Promise((resolve,reject)=>{
   const worker=new Worker(new URL('lib/worker.mjs',ROOT),{workerData:{request,snapshotKey,trustedPrepared},resourceLimits:{maxOldGenerationSizeMb:384,maxYoungGenerationSizeMb:64,stackSizeMb:8}});
-  let done=false;const finish=async(error,result)=>{if(done)return;done=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);await worker.terminate();if(error)reject(error);else resolve(result);};
+  let done=false,phase='preparation',timer;
+  const finish=async(error,result)=>{if(done)return;done=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);await worker.terminate();if(error)reject(error);else resolve(result);};
   const abort=()=>{void finish(Error('Interrupted; active worker terminated'));};
-  const timer=setTimeout(()=>{void finish(Error(`Worker exceeded the ${deadlineMs===DEADLINE_MS?'30-second':deadlineMs+'-millisecond'} deadline; no outcome accepted`));},deadlineMs);
+  const arm=(milliseconds,label)=>{clearTimeout(timer);const duration=milliseconds%1000===0?`${milliseconds/1000}-second`:`${milliseconds}-millisecond`;timer=setTimeout(()=>{void finish(Error(`Worker ${label} exceeded the ${duration} deadline; no outcome accepted`));},milliseconds);};
+  arm(prepareDeadlineMs,'preparation');
   signal?.addEventListener('abort',abort,{once:true});
-  worker.once('message',packet=>{if(!packet||packet.ok!==true)void finish(Error(packet?.error||'Guest job failed'));else void finish(null,packet.result);});
+  worker.on('message',packet=>{
+   if(done)return;
+   try{
+    if(packet&&Object.hasOwn(packet,'phase')){
+     exact(packet,['phase'],'worker phase');if(packet.phase!=='execution'||phase!=='preparation')throw Error('Unexpected or duplicate worker execution phase');
+     phase='execution';arm(deadlineMs,'execution');onExecution?.();return;
+    }
+    if(packet?.ok===false){exact(packet,['ok','error'],'worker failure');if(typeof packet.error!=='string')throw Error('Invalid worker failure');void finish(Error(packet.error.slice(0,2048)||'Guest job failed'));return;}
+    exact(packet,['ok','result'],'worker result');if(packet.ok!==true||phase!=='execution')throw Error('Worker result arrived without a verified execution phase');void finish(null,packet.result);
+   }catch(error){void finish(error);}
+  });
   worker.once('error',error=>{void finish(error);});worker.once('exit',()=>{if(!done)void finish(Error('Worker exited without an accepted result'));});
  });
 }
@@ -86,7 +100,7 @@ async function execute(options,signal){
   const workspace={schema:'forkwake.workspace',version:1,module:{name,sha256:digest,dataBase64:moduleBase64},snapshot:captured.snapshot,settings:{entry:captured.snapshot.entry,args:captured.snapshot.args},branches};
   const encoded=JSON.stringify(workspace,null,2)+'\n';if(Buffer.byteLength(encoded)>WORKSPACE_BYTES)throw Error('Workspace exceeds the 64MiB export limit');
   const summary={schema:'forkwake.outcomes',version:1,operation:options.command,module:{name,sha256:digest},capture:captured.summary,
-   execution:{prefixIndependentlyReexecutedForImport:original!==undefined,branchPrefixReexecuted:false,workerDeadlineMs:DEADLINE_MS,transformPolicy:POLICY},branches:outcomes,
+   execution:{prefixIndependentlyReexecutedForImport:original!==undefined,branchPrefixReexecuted:false,preparationDeadlineMs:PREPARATION_DEADLINE_MS,workerDeadlineMs:DEADLINE_MS,transformPolicy:POLICY},branches:outcomes,
    scope:'One owned pending cut. Portable resume independently recaptures once; sibling branches restore that validated continuation.'};
   const reportBytes=JSON.stringify(summary,null,2)+'\n';if(Buffer.byteLength(reportBytes)>16*1024*1024)throw Error('Outcome summaries exceed their export limit');
   await writeNew(path.join(options.out,'workspace.forkwake'),encoded,signal);await writeNew(path.join(options.out,'outcomes.json'),reportBytes,signal);complete=true;

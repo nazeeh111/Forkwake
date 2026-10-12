@@ -132,11 +132,28 @@ test('worker protocol restores a sealed cache in another fresh worker and reject
   const job=(request,trustedPrepared)=>new Promise((resolve,reject)=>{
     const worker=new Worker(new URL('../lib/worker.mjs',import.meta.url),{workerData:{request,snapshotKey:key,trustedPrepared},resourceLimits:{maxOldGenerationSizeMb:256}});
     const timer=setTimeout(()=>{worker.terminate();reject(Error('Worker deadline exceeded'));},30000);
-    worker.once('message',message=>{clearTimeout(timer);worker.terminate();resolve(message);});worker.once('error',error=>{clearTimeout(timer);reject(error);});
+    let phaseCount=0;
+    worker.on('message',message=>{if(message.phase==='execution'){assert.deepEqual(message,{phase:'execution'});phaseCount++;return;}clearTimeout(timer);worker.terminate();resolve({...message,phaseCount});});worker.once('error',error=>{clearTimeout(timer);reject(error);});
   });
-  const raw=simple(),moduleBase64=encoded(raw),captureResult=await job({operation:'capture',moduleBase64,entry:'run',args:[7]});assert(captureResult.ok);
-  const completed=await job({operation:'fork',moduleBase64,snapshot:captureResult.result.snapshot,response:42},captureResult.result.internalPrepared);assert(completed.ok);assert.equal(completed.result.summary.returnI32,42);
-  const bad=await job({operation:'capture',moduleBase64,entry:'run',args:[7],snapshotKey:otherKey});assert.equal(bad.ok,false);assert.match(bad.error,/job shape/);
+  const raw=simple(),moduleBase64=encoded(raw),captureResult=await job({operation:'capture',moduleBase64,entry:'run',args:[7]});assert(captureResult.ok);assert.equal(captureResult.phaseCount,1);
+  const completed=await job({operation:'fork',moduleBase64,snapshot:captureResult.result.snapshot,response:42},captureResult.result.internalPrepared);assert(completed.ok);assert.equal(completed.result.summary.returnI32,42);assert.equal(completed.phaseCount,1);
+  const bad=await job({operation:'capture',moduleBase64,entry:'run',args:[7],snapshotKey:otherKey});assert.equal(bad.ok,false);assert.match(bad.error,/job shape/);assert.equal(bad.phaseCount,0);
+});
+
+test('preparation phase occurs exactly once before every guest instance and initialization',async()=>{
+  const raw=simple(),moduleBase64=encoded(raw),original=WebAssembly.Instance;let phases=0,instances=0;
+  WebAssembly.Instance=function(...args){assert.equal(phases,1,'guest cannot instantiate before the trusted preparation hook');instances++;return new original(...args);};
+  const trusted={snapshotKey:key,onPrepared:()=>{phases++;assert.equal(instances,0);}};
+  try{
+    const saved=await handle({operation:'capture',moduleBase64,entry:'run',args:[7]},trusted);assert.equal(phases,1);assert.equal(instances,1);
+    for(const request of [{operation:'fork',moduleBase64,snapshot:saved.snapshot,response:1},{operation:'import',moduleBase64,snapshot:saved.snapshot}]){
+      phases=0;instances=0;await handle(request,{...trusted,trustedPrepared:saved.internalPrepared});assert.equal(phases,1);assert.equal(instances,1);
+    }
+    const initialization=compile(`(module ${preamble} ${run} (func (export "_initialize") (call $pre (i32.const 1) (i32.const 2))))`);
+    phases=0;instances=0;await assert.rejects(handle({operation:'capture',moduleBase64:encoded(initialization),entry:'run',args:[1]},trusted),/initialization/);assert.equal(phases,1);assert.equal(instances,1);
+    const unsupported=compile(`(module (import "foreign" "network" (func $network)) ${preamble} ${run})`);
+    phases=0;instances=0;await assert.rejects(handle({operation:'capture',moduleBase64:encoded(unsupported),entry:'run',args:[1]},trusted),/Unowned/);assert.equal(phases,0);assert.equal(instances,0);
+  }finally{WebAssembly.Instance=original;}
 });
 
 test('module preflight rejects unsupported capabilities, mutation and ABI shapes before execution',()=>{

@@ -21,7 +21,7 @@ npm start
 
 Open the printed loopback address, normally `http://127.0.0.1:6350`. Load the SQLite example, run to the pending event, and choose Approved, Declined or Timeout. Compare database rows, the execution suffix, globals and exact memory differences. You can also enter any signed 32-bit response.
 
-The first capture rewrites the compiled module with Binaryen Asyncify. Later branches reuse the validated transformation and create fresh guest instances. On the development Mac, the 1.17 MiB SQLite module took about 13 seconds to capture and a cached fork about 0.24 seconds. These are example measurements, not a performance guarantee. Every workbench job has a 30-second deadline and can be cancelled.
+The first capture rewrites the compiled module with Binaryen Asyncify. Later branches reuse the validated transformation and create fresh guest instances. On the development Mac, the 1.17 MiB SQLite module took about 13 seconds to capture and a cached fork about 0.24 seconds. These are example measurements, not a performance guarantee. The hosted Mac runner took about 41 seconds to prepare the same workload. Preparation has a separate 90-second deadline; guest initialization, execution and result capture have a 30-second deadline. Jobs can be cancelled during either phase.
 
 ## Reproducible cuts, outside the browser
 
