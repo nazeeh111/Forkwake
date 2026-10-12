@@ -1,0 +1,11 @@
+# Sequential futures
+
+The 0.1 release remains supported. A separate schema2 operation family extends the same closed guest contract, not its external capabilities.
+
+A sequence capture suspends on the first pending_effect. Advance restores one authenticated cut, returns the supplied response to exactly that pending import, and runs until another pending import or the actual return. A new cut contains the updated saved stack, complete guest memory/globals, immutable root prefix, cumulative suffix and exact resolved effect/response history. No preceding decisions run again during advance. A portable deep import runs the initial prefix once, advances the declared response history, then demands exact equality of all captured state before resealing.
+
+Search operates on a finite declared response alphabet and maximum depth/job/state budgets. A priority queue orders candidates by the number of responses differing from an explicitly supplied baseline sequence. It retains actual continuation cuts, not replay scripts. A goal is an actual terminal i32 return value. A discovered witness is minimal only if all cheaper candidates were exhausted without unresolved truncations/errors. No witness is not proof of impossibility outside the enumerated search space. Reports must show terminal, pending, failed and unexpanded counts and whether the stated depth/response space was exhausted.
+
+The real SQLite fulfillment example intentionally contains a disclosed timeout policy defect, with a corrected policy selectable separately. Both execute actual SQL and repeated live SQL callbacks. Exact final numeric fields and database JSON are checked against uninterrupted raw modules for every enumerated terminal. This is not a newly discovered third-party bug or a clone of external payment services.
+
+Acceptance includes sibling/root immutability, sealed history binding, wrong-module/key/import rejection, variable path depth and repeated identical pending arguments, memory growth and nested frame restoration, a negative-control corrected workload, finite-budget/abort/worker deadline behavior, portable deep import, actual CLI installation and actual UI export/reopen. Existing one-cut workspaces remain supported. Established Asyncify and model-checking/search methods remain credited.

@@ -1,8 +1,8 @@
 {
   "name": "forkwake",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Fork a paused WebAssembly continuation and compare actual outcomes.",
+  "description": "Branch live WebAssembly continuations through sequential decisions and search actual alternate futures.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

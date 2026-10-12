@@ -5,6 +5,7 @@ import {Worker} from 'node:worker_threads';
 import {fileURLToPath} from 'node:url';
 import {diffMemory} from './lib/diff.mjs';
 import {SQLITE_SHA,reportFromMemory} from './lib/fixture.mjs';
+import {createSequenceService} from './lib/sequence-service.mjs';
 
 const ROOT=new URL('./',import.meta.url), MAX_MODULE=8*1024*1024, MAX_BODY=64*1024*1024, MAX_STORE=64*1024*1024;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -17,6 +18,7 @@ function base64(value,max){if(typeof value!=='string'||value.length>Math.ceil(ma
 export async function createServer({port=6350,deadlineMs=30000,prepareDeadlineMs=90000}={}){
   const token=crypto.randomBytes(32).toString('hex'),snapshotKey=crypto.randomBytes(32).toString('hex');
   const modules=new Map(),sessions=new Map(),branches=new Map(),jobs=new Map();
+  const sequences=await createSequenceService({snapshotKey,deadlineMs,prepareDeadlineMs,lookupModule:digest=>modules.get(digest)});
   const demoBytes=await fs.readFile(new URL('examples/sqlite/workflow.raw.wasm',ROOT));
   if(sha(demoBytes)!==SQLITE_SHA)throw Error('Bundled example differs from its declared identity.');
   let origin;
@@ -41,20 +43,22 @@ export async function createServer({port=6350,deadlineMs=30000,prepareDeadlineMs
     function send(value,status=200,type='application/json'){const data=type==='application/json'?Buffer.from(JSON.stringify(value)):value;res.writeHead(status,{'Content-Type':type,'Content-Length':data.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});res.end(data);}
     try{if(req.headers.host!==new URL(origin).host)return send({error:'Only the local workbench hostname is accepted.'},403);const url=new URL(req.url,origin),path=url.pathname;
       if(req.method==='GET'){
-        if(path==='/api/bootstrap')return send({token,version:'0.1.0',budgets:{preparationMs:prepareDeadlineMs,executionMs:deadlineMs},demo:{name:'SQLite: fork an active payment transaction',defaultInput:4,defaultResponses:[{label:'Approved',value:1},{label:'Declined',value:0},{label:'Timeout',value:-1}],description:'Pause inside SQLite’s executing SQL callback. Resume sibling instances with different authorization results.'}});
-        if(path.startsWith('/api/jobs/')){const j=jobs.get(path.split('/').at(-1));if(!j)return send({error:'Unknown job.'},404);return send({state:j.state,elapsedMs:Date.now()-j.started,stage:j.stage,result:j.result,error:j.error});}
+        if(path==='/api/bootstrap')return send({token,version:'0.2.0',budgets:{preparationMs:prepareDeadlineMs,executionMs:deadlineMs},demo:{name:'SQLite: fork an active payment transaction',defaultInput:4,defaultResponses:[{label:'Approved',value:1},{label:'Declined',value:0},{label:'Timeout',value:-1}],description:'Pause inside SQLite’s executing SQL callback. Resume sibling instances with different authorization results.'}});
+        const sequenceValue=await sequences.get(path,url);if(sequenceValue!==undefined)return send(sequenceValue);
+        if(path.startsWith('/api/jobs/')){const jobId=path.split('/').at(-1),sequenceJob=sequences.getJob(jobId);if(sequenceJob)return send(sequenceJob);const j=jobs.get(jobId);if(!j)return send({error:'Unknown job.'},404);return send({state:j.state,elapsedMs:Date.now()-j.started,stage:j.stage,result:j.result,error:j.error});}
         if(path.startsWith('/api/sessions/')){const s=sessions.get(path.split('/').at(-1));if(!s)throw Error('Unknown paused session.');return send(sessionInfo(s));}
         if(path==='/api/memory'){const s=sessions.get(url.searchParams.get('session'));if(!s)throw Error('Unknown paused session.');const b=url.searchParams.has('branch')?branches.get(url.searchParams.get('branch')):null;if(url.searchParams.has('branch')&&(!b||b.sessionId!==s.id))throw Error('Branch does not belong to this cut.');const mem=base64(b?b.memoryBase64:s.snapshot.memoryBase64,32*1024*1024);const offset=int(Number(url.searchParams.get('offset')||0),0,mem.length,'Offset'),length=int(Number(url.searchParams.get('length')||128),1,256,'Length');const bytes=mem.subarray(offset,Math.min(offset+length,mem.length));return send({offset,hex:bytes.toString('hex'),ascii:[...bytes].map(n=>n>=32&&n<=126?String.fromCharCode(n):'.').join(''),totalBytes:mem.length});}
         if(path==='/api/compare'){const a=branches.get(url.searchParams.get('left')),b=branches.get(url.searchParams.get('right'));if(!a||!b||a.sessionId!==b.sessionId)throw Error('Select two outcomes from the same cut.');return send({diff:diffMemory(base64(a.memoryBase64,32*1024*1024),base64(b.memoryBase64,32*1024*1024)),reportChanges:a.report&&b.report?Object.keys(a.report).filter(k=>JSON.stringify(a.report[k])!==JSON.stringify(b.report[k])).map(key=>({key,left:a.report[key],right:b.report[key]})):[]});}
         if(path.startsWith('/api/workspaces/')){const s=sessions.get(path.split('/').at(-1));if(!s)throw Error('Unknown paused session.');const m=modules.get(s.moduleId);return send({schema:'forkwake.workspace',version:1,module:{name:m.name,sha256:m.sha256,dataBase64:m.bytes.toString('base64')},snapshot:s.snapshot,settings:{entry:s.snapshot.entry,args:s.snapshot.args},branches:[...branches.values()].filter(b=>b.sessionId===s.id).map(b=>({label:b.label,response:b.response}))});}
-        const assets={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8']};if(assets[path])return send(await fs.readFile(new URL('web/'+assets[path][0],ROOT)),200,assets[path][1]);return send({error:'Not found.'},404);
+        const assets={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8'],'/futures':['futures.html','text/html; charset=utf-8'],'/futures.html':['futures.html','text/html; charset=utf-8'],'/futures.js':['futures.js','text/javascript; charset=utf-8'],'/futures.css':['futures.css','text/css; charset=utf-8']};if(assets[path])return send(await fs.readFile(new URL('web/'+assets[path][0],ROOT)),200,assets[path][1]);return send({error:'Not found.'},404);
       }
       if(req.method!=='POST')return send({error:'Method not supported.'},405);
       if(req.headers.origin!==origin||req.headers['x-forkwake-token']!==token)return send({error:'A write must come from this workbench.'},403);
       if(req.headers['content-type']?.split(';')[0]!=='application/json')throw Error('Use JSON request bodies.');const value=await body(req);
+      const sequenceValue=await sequences.post(path,value);if(sequenceValue!==undefined)return send(sequenceValue,path==='/api/sequence-jobs'?202:200);
       if(path==='/api/demo'){keys(value,[]);return send(publicModule(addModule(demoBytes,'SQLite3.54: live transaction and SQL callback')));}
       if(path==='/api/modules'){keys(value,['dataBase64','name']);if(typeof value.name!=='string'||value.name.length>256)throw Error('A bounded module name is required.');return send(publicModule(addModule(base64(value.dataBase64,MAX_MODULE),value.name)));}
-      if(path.startsWith('/api/cancel/')){keys(value,[]);const j=jobs.get(path.split('/').at(-1));if(!j)throw Error('Unknown job.');cancel(j);return send({state:j.state});}
+      if(path.startsWith('/api/cancel/')){keys(value,[]);const jobId=path.split('/').at(-1),sequenceCancelled=sequences.cancel(jobId);if(sequenceCancelled)return send(sequenceCancelled);const j=jobs.get(jobId);if(!j)throw Error('Unknown job.');cancel(j);return send({state:j.state});}
       if(path==='/api/jobs'){
         if(value.operation==='capture'){keys(value,['operation','moduleId','entry','args']);const m=modules.get(value.moduleId);if(!m)throw Error('Load a module first.');if(value.entry!=='run'||!Array.isArray(value.args)||value.args.length!==1)throw Error('This ABI requires run(i32) and one argument.');int(value.args[0],-2147483648,2147483647,'Input');return send({job:start({operation:'capture',moduleBase64:m.bytes.toString('base64'),entry:'run',args:value.args},{module:m})},202);}
         if(value.operation==='fork'){keys(value,['operation','sessionId','response','label']);const s=sessions.get(value.sessionId);if(!s)throw Error('Unknown paused session.');int(value.response,-2147483648,2147483647,'Response');if(typeof value.label!=='string'||value.label.length>64)throw Error('A branch label of at most64 characters is required.');const m=modules.get(s.moduleId);return send({job:start({operation:'fork',moduleBase64:m.bytes.toString('base64'),snapshot:s.snapshot,response:value.response},{module:m,session:s,label:value.label})},202);}
@@ -65,6 +69,6 @@ export async function createServer({port=6350,deadlineMs=30000,prepareDeadlineMs
     }catch(e){if(!res.headersSent)send({error:String(e.message||'Request failed.').slice(0,2048)},400);else res.destroy();}
   });
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});origin='http://127.0.0.1:'+server.address().port;
-  return {server,origin,close:async()=>{for(const j of jobs.values())cancel(j);await new Promise(resolve=>server.close(resolve));}};
+  return {server,origin,close:async()=>{sequences.close();for(const j of jobs.values())cancel(j);await new Promise(resolve=>server.close(resolve));}};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){const index=process.argv.indexOf('--port');const port=index<0?6350:Number(process.argv[index+1]);int(port,0,65535,'Port');const app=await createServer({port});console.log('Open '+app.origin);for(const signal of ['SIGINT','SIGTERM'])process.once(signal,async()=>{await app.close();process.exit(0);});}
