@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "templateSha256": "85d3e5e3abc886b04db27c92afef9435834f791cb337d0301d808fb14982c9a4",
+  "normalizedSha256": "10047b08354d5fff45c477128b231741a062e74675556b43f281fcdf1fd94e8d",
+  "moduleBytes": 2313823,
+  "slot": {
+    "binaryOffset": 1005490,
+    "memoryAddress": 623016,
+    "capacity": 1048576,
+    "dataSegment": 1
+  },
+  "memoryReport": {
+    "version": 1,
+    "memoryAddress": 1671656,
+    "byteLength": 24738,
+    "words": {
+      "version": 0,
+      "status": 4,
+      "resultI32": 8,
+      "entryCount": 12,
+      "outputBytes": 16,
+      "diagnosticBytes": 20,
+      "pendingKind": 24,
+      "ordinal": 28,
+      "labelBytes": 32,
+      "payloadBytes": 36,
+      "allocatedBytes": 40,
+      "peakAllocatedBytes": 44,
+      "deniedAllocations": 48,
+      "heapLimitBytes": 52,
+      "instructionInterrupts": 56,
+      "unhandledPromises": 60
+    },
+    "buffers": {
+      "label": {
+        "offset": 64,
+        "capacity": 97
+      },
+      "payload": {
+        "offset": 161,
+        "capacity": 4097
+      },
+      "output": {
+        "offset": 4258,
+        "capacity": 16384
+      },
+      "diagnostic": {
+        "offset": 20642,
+        "capacity": 4096
+      }
+    }
+  }
+}

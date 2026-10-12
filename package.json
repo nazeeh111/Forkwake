@@ -1,8 +1,8 @@
 {
   "name": "forkwake",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Branch live WebAssembly continuations through sequential decisions and search actual alternate futures.",
+  "description": "Fork live JavaScript and WebAssembly continuations at named decisions and search alternate futures.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

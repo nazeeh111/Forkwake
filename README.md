@@ -1,8 +1,10 @@
 # Forkwake
 
-**Branch a live WebAssembly execution through a chain of decisions. Search its actual alternate futures for the smallest change that reaches a chosen result.**
+**Pause a running JavaScript workflow at a decision. Split its live state into alternate futures, then find the fewest changed answers that break a rule.**
 
 Forkwake saves the suspended call stack, linear memory, mutable integer globals and owned event history. Each branch restores that state into an independent guest instance and resumes the pending call. It does not restart the program and feed it different inputs.
+
+Write ordinary JavaScript with `decision("Confirm transfer", {amount: 25})`. Forkwake runs it in a prebuilt QuickJS interpreter and preserves the interpreter's live memory and suspended stack. Closures, cyclic object graphs, Map keys and queued Promise jobs survive each branch. Your workflow needs no C compiler or rewrite into a state machine. JavaScript runs inside an explicitly closed guest, with no Node, browser or network APIs.
 
 The sequential example pauses **inside SQLite's SQL engine** at reservation, payment, retry and dispatch decisions. Its open transaction, two busy prepared statements, nested C locals, heap and unfinished SQL expression survive repeated cuts. A deliberately faulty timeout policy can ship an order without a receipt; its correction stops that path. The search finds the actual response sequence and reports the declared search space, coverage and unresolved work. This is an owned demonstration, not a newly discovered SQLite defect. The original single-event payment example remains available.
 
@@ -19,9 +21,32 @@ npm ci --ignore-scripts
 npm start
 ```
 
-Open the printed loopback address, normally `http://127.0.0.1:6350`, and follow **Sequential futures**. Load the fulfillment example, capture input `4`, and find return `1` using choices `1,0,-1`, baseline `1,1,1,1` and four additional decisions. The witness `[1,-1,-1,1]` changes two decisions from that baseline. Inspect the real shipment and missing receipt. Repeat with corrected input `-4`: all eleven terminal futures in that declared tree return `0`. You can also advance any paused node manually and compare actual memory and history. The original one-event workbench remains at `/`.
+Open `/futures` at the printed loopback address. The JavaScript editor loads a deliberately faulty transfer example: two timeout responses can debit an account without crediting its recipient. Capture it, search for return `1`, and inspect the actual named requests and emitted ledger. Load the corrected version to compare the declared response tree. The seed is a signed integer input; `emit(text)` keeps the latest output string and `resultI32` supplies your terminal search result. A script error is an execution error, never a successful witness.
+
+The SQLite example remains available at the same printed address, normally `http://127.0.0.1:6350`, and follow **Sequential futures**. Load the fulfillment example, capture input `4`, and find return `1` using choices `1,0,-1`, baseline `1,1,1,1` and four additional decisions. The witness `[1,-1,-1,1]` changes two decisions from that baseline. Inspect the real shipment and missing receipt. Repeat with corrected input `-4`: all eleven terminal futures in that declared tree return `0`. You can also advance any paused node manually and compare actual memory and history. The original one-event workbench remains at `/`.
 
 The first capture rewrites the compiled module with Binaryen Asyncify. Later branches reuse the validated transformation and create fresh guest instances. On the development Mac, the 1.17 MiB SQLite module took about 13 seconds to capture and a cached fork about 0.24 seconds. These are example measurements, not a performance guarantee. The hosted Mac runner took about 41 seconds to prepare the same workload. Preparation has a separate 90-second deadline; guest initialization, execution and result capture have a 30-second deadline. Jobs can be cancelled during either phase.
+
+## Your own JavaScript
+
+```js
+var resultI32;
+const state = { balance: 100 };
+const receipt = decision("Payment", { amount: 25, balance: state.balance });
+if (receipt === 1) state.balance -= 25;
+emit(JSON.stringify(state));
+resultI32 = state.balance < 0 ? 1 : 0;
+```
+
+```sh
+node cli.mjs capture --script ./workflow.js --out ./first-cut
+node cli.mjs continue --workspace ./first-cut/workspace.forkwake \
+  --responses 1 --out ./approved
+node cli.mjs explore --script ./examples/javascript/workflow.js \
+  --alphabet 1,0,-1 --baseline 1,1,1,1 --goal 1 --max-depth 4 --out ./transfer-search
+```
+
+Source is bound to the exact prebuilt interpreter and its own SHA-256, including portable cuts. Script loading patches one bounded data slot and executes no guest code. Source must be valid UTF-8, at most 1,048,575 bytes, with no NUL. Decision labels admit 96 UTF-8 bytes and JSON payloads 4,096. The latest output admits 16,383 UTF-8 bytes. The allocator enforces 4 MiB of requested QuickJS allocation bytes, separately from the guest's 32 MiB physical memory maximum and terminating worker deadlines. Clock values and the initial random state are deterministic. External effects are explicit modeled decisions, not live remote calls. [JavaScript contract and rebuild](examples/javascript/README.md) and [CLI details](docs/javascript-cli.md) explain errors and limits.
 
 ## Search and continue outside the browser
 
@@ -35,7 +60,7 @@ node cli.mjs continue --workspace ./paused-before-dispatch/workspace.forkwake \
   --responses 1 --out ./reproduced-failure
 ```
 
-`explore` orders concrete executions by the number of responses differing from the explicit baseline. It reuses saved continuations and existing verified edges. `search.json` records scope and coverage; `nodes.json` contains actual execution summaries and interpreted rows only for the exact owned example. A minimum is claimed only when cheaper possibilities have been resolved. A budget limit, execution error or unresolved depth boundary prevents the corresponding guarantee. No match means only what the completed declared search establishes.
+`explore` orders concrete executions by the number of responses differing from the explicit baseline. It reuses saved continuations and existing verified edges. `search.json` records scope and coverage; `nodes.json` contains actual execution summaries and actual JavaScript output and named requests, or interpreted SQL rows for the exact owned example. A minimum is claimed only when cheaper possibilities have been resolved. A budget limit, execution error or unresolved depth boundary prevents the corresponding guarantee. No match means only what the completed declared search establishes.
 
 Version2 workspaces export **one chosen paused cut**, including its exact resolved history. Import runs the root prefix once, then executes that history and demands identical memory, globals and saved stack before resealing. It does not accept saved outcomes as evidence. `continue` advances that validated cut; it saves a new cut if still paused or the actual terminal outcome if finished. The interface can export and reopen the selected paused node, including deep cuts.
 
@@ -103,3 +128,5 @@ Binaryen's [Asyncify](https://kripken.github.io/blog/wasm/2019/07/16/asyncify.ht
 Original code is MIT. SQLite source is unchanged public-domain code; Binaryen is Apache-2.0. Official source identities and build provenance are included. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Built and tested with Codex. Useful contributions include a public closed guest whose fork disagrees with an uninterrupted control, another reproducible workload, or a specific ABI limitation with a small compiling example. Do not upload proprietary programs or private memory dumps. If this is useful, starring the repository helps other developers find it.
+
+The ending `resultI32` must be an own data property of the guest global object. Getters, setters, inherited values and missing values are rejected. Reading an ending never runs extra guest code after Promise jobs finish.
