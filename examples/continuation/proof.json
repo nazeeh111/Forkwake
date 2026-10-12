@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "mechanism": "Binaryen Asyncify continuation clone of compiled nested C",
+  "node": "v24.14.0",
+  "originalSha256": "9b915881db8c8edc525c9fed74147192072479ebd0e4491e8b8503607d63face",
+  "instrumentedSha256": "4f68f8609b5a652a62864b35653d0cdf60c8ef6b753e90aa47d5b80b82418418",
+  "cut": {
+    "memoryBytes": 131072,
+    "memorySha256": "d74dadafa0e7b01887a1474b89defc2c5657ce76c306ccc80f0e928580d0024c",
+    "capturedContinuationBytes": 52,
+    "header": 32800,
+    "globals": {
+      "__branchpoint_global_0": 32752,
+      "__branchpoint_global_1": 0,
+      "__branchpoint_global_2": 32800
+    },
+    "bridge": {
+      "prefix": [
+        {
+          "stage": 1,
+          "value": 1
+        },
+        {
+          "stage": 2,
+          "value": 324508666
+        },
+        {
+          "stage": 3,
+          "value": 1251397877
+        }
+      ],
+      "suffix": [],
+      "pending": {
+        "kind": 73,
+        "request": 324509314,
+        "ptr": 49200,
+        "words": 4
+      },
+      "sealed": true,
+      "virtualCounter": 3
+    },
+    "state": {
+      "entries": 1,
+      "allocatedWords": 4,
+      "global": 160,
+      "heap": [
+        44,
+        42,
+        610839793,
+        65
+      ]
+    }
+  },
+  "branches": [
+    {
+      "response": 1,
+      "result": 528224451,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 2999121318,
+        "heap": [
+          44,
+          43,
+          610839793,
+          1175051762
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 1175051697
+        },
+        {
+          "stage": 2,
+          "value": 1499561072
+        },
+        {
+          "stage": 1,
+          "value": 2999121318
+        }
+      ],
+      "ownedCounter": 3
+    },
+    {
+      "response": 9,
+      "result": 528224619,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 2999121454,
+        "heap": [
+          44,
+          35,
+          610839793,
+          1175051802
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 1175051737
+        },
+        {
+          "stage": 2,
+          "value": 1499561112
+        },
+        {
+          "stage": 1,
+          "value": 2999121454
+        }
+      ],
+      "ownedCounter": 3
+    },
+    {
+      "response": -1,
+      "result": 528224249,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 2999121212,
+        "heap": [
+          44,
+          4294967253,
+          610839793,
+          1175051752
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 1175051687
+        },
+        {
+          "stage": 2,
+          "value": 1499561062
+        },
+        {
+          "stage": 1,
+          "value": 2999121212
+        }
+      ],
+      "ownedCounter": 3
+    },
+    {
+      "response": 0,
+      "result": 528224434,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 2999121307,
+        "heap": [
+          44,
+          42,
+          610839793,
+          1175051757
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 1175051692
+        },
+        {
+          "stage": 2,
+          "value": 1499561067
+        },
+        {
+          "stage": 1,
+          "value": 2999121307
+        }
+      ],
+      "ownedCounter": 3
+    },
+    {
+      "response": 2147483647,
+      "result": 2675707897,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 851637564,
+        "heap": [
+          44,
+          2147483605,
+          610839793,
+          3322535400
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 3322535335
+        },
+        {
+          "stage": 2,
+          "value": 3647044710
+        },
+        {
+          "stage": 1,
+          "value": 851637564
+        }
+      ],
+      "ownedCounter": 3
+    },
+    {
+      "response": -2147483648,
+      "result": 2675708082,
+      "state": {
+        "entries": 1,
+        "allocatedWords": 4,
+        "global": 851637659,
+        "heap": [
+          44,
+          2147483690,
+          610839793,
+          3322535405
+        ]
+      },
+      "prefixCalls": 3,
+      "suffix": [
+        {
+          "stage": 3,
+          "value": 3322535340
+        },
+        {
+          "stage": 2,
+          "value": 3647044715
+        },
+        {
+          "stage": 1,
+          "value": 851637659
+        }
+      ],
+      "ownedCounter": 3
+    }
+  ],
+  "checks": {
+    "uninterruptedReferenceMatches": 6,
+    "preCutWorkNotReexecuted": true,
+    "cutMemoryIdentical": true,
+    "restartFromBeginningRejected": true,
+    "allMutableGlobalsRestored": true,
+    "siblingMemoryIsolated": true,
+    "sourceAndSnapshotUnchanged": true,
+    "reusableSnapshotIndependentOfBranchOrder": true
+  },
+  "limits": [
+    "Owned unshared wasm32 memory",
+    "Live tables rejected; unused linker table removed",
+    "Only explicit owned bridge imports",
+    "No native process fork, WASI, host files, network, threads, reference globals, or engine-stack cloning",
+    "Bump arena demonstrates actual C heap allocation, not libc malloc",
+    "This fixture has one pending effect; multiple cuts are not yet tested"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "sha256": "6341207f89d90606cdba3d47167bd2f55245b00880db1855e149d747e97b8f66",
+  "resultsOffset": 711856,
+  "jsonOffset": 711952,
+  "jsonCapacity": 2048,
+  "fields": 22,
+  "source": "Owned pure layout exports; actual branch values are read from final guest memory."
+}

@@ -1,0 +1,70 @@
+import http from 'node:http';
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import {Worker} from 'node:worker_threads';
+import {fileURLToPath} from 'node:url';
+import {diffMemory} from './lib/diff.mjs';
+import {SQLITE_SHA,reportFromMemory} from './lib/fixture.mjs';
+
+const ROOT=new URL('./',import.meta.url), MAX_MODULE=8*1024*1024, MAX_BODY=64*1024*1024, MAX_STORE=64*1024*1024;
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const id=()=>crypto.randomBytes(12).toString('hex');
+function int(value,lo,hi,label){if(!Number.isSafeInteger(value)||value<lo||value>hi)throw Error(label+' is out of range.');return value;}
+function keys(value,allowed){if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!allowed.includes(k)))throw Error('Invalid request fields.');}
+function base64(value,max){if(typeof value!=='string'||value.length>Math.ceil(max/3)*4||!value.length||value.length%4||!/^[A-Za-z0-9+/=]+$/.test(value))throw Error('Invalid bounded base64 data.');const b=Buffer.from(value,'base64');if(b.length>max||b.toString('base64')!==value)throw Error('Invalid canonical base64 data.');return b;}
+
+
+export async function createServer({port=6350,deadlineMs=30000}={}){
+  const token=crypto.randomBytes(32).toString('hex'),snapshotKey=crypto.randomBytes(32).toString('hex');
+  const modules=new Map(),sessions=new Map(),branches=new Map(),jobs=new Map();
+  const demoBytes=await fs.readFile(new URL('examples/sqlite/workflow.raw.wasm',ROOT));
+  if(sha(demoBytes)!==SQLITE_SHA)throw Error('Bundled example differs from its declared identity.');
+  let origin;
+  function stored(){let total=0;for(const m of modules.values()){total+=m.bytes.length;if(m.prepared)total+=m.prepared.bytesBase64.length*3/4;}for(const s of sessions.values())total+=s.snapshot.memoryBase64.length*3/4;for(const b of branches.values())total+=b.memoryBase64.length*3/4;return total;}
+  function capacity(bytes){if(stored()+bytes>MAX_STORE)throw Error('Workspace memory budget reached. Export your work and start a new local session.');}
+  function addModule(bytes,name){const digest=sha(bytes);if(modules.has(digest))return modules.get(digest);if(bytes.length>MAX_MODULE||modules.size>=4)throw Error('At most four modules, eight MiB each.');if(bytes.subarray(0,8).toString('hex')!=='0061736d01000000')throw Error('A WebAssembly version1 module is required.');capacity(bytes.length);const m={id:digest,sha256:digest,name:String(name||'module.wasm').slice(0,256),size:bytes.length,bytes};modules.set(digest,m);return m;}
+  const publicModule=m=>({id:m.id,name:m.name,sha256:m.sha256,size:m.size});
+
+  function publicBranch(b){return {branchId:b.id,sessionId:b.sessionId,response:b.response,label:b.label,summary:b.summary,diff:b.summary.memoryDiff,report:b.report};}
+  function sessionInfo(s){return {sessionId:s.id,summary:s.summary,module:publicModule(modules.get(s.moduleId)),settings:{entry:s.snapshot.entry,args:s.snapshot.args},isBundledExample:s.moduleId===SQLITE_SHA,branches:[...branches.values()].filter(b=>b.sessionId===s.id).map(publicBranch)};}
+  function start(request,details){if([...jobs.values()].filter(j=>j.state==='running').length>=2)throw Error('Two jobs are active. Cancel one or wait.');const job={id:id(),state:'running',started:Date.now(),stage:request.operation==='fork'?'Restoring the actual saved continuation':'Validating and instrumenting compiled code'};jobs.set(job.id,job);while(jobs.size>24){const old=[...jobs.values()].find(j=>j.state!=='running');if(!old)break;jobs.delete(old.id);}
+    const m=details.module;const worker=new Worker(new URL('lib/worker.mjs',ROOT),{workerData:{request,snapshotKey,trustedPrepared:m.prepared},resourceLimits:{maxOldGenerationSizeMb:384,maxYoungGenerationSizeMb:64,stackSizeMb:8}});job.worker=worker;
+    const timer=setTimeout(()=>{if(job.state==='running'){job.state='error';job.error='Job exceeded the30-second deadline. No new outcome was accepted.';worker.terminate();}},deadlineMs);
+    worker.on('message',packet=>{if(job.state!=='running')return;try{if(!packet.ok)throw Error(packet.error||'Guest operation failed.');const r=packet.result;if(request.operation==='fork'){
+      if(branches.size>=12)throw Error('Twelve branch outcomes are retained. Export and start another session.');capacity(r.finalMemoryBase64.length*3/4);const b={id:id(),sessionId:details.session.id,response:request.response,label:details.label,summary:r.summary,memoryBase64:r.finalMemoryBase64,report:reportFromMemory(m.sha256,r.finalMemoryBase64)};branches.set(b.id,b);job.result=publicBranch(b);
+    }else{if(sessions.size>=4)throw Error('Four paused sessions are retained. Export and start another local session.');const cacheExtra=m.prepared?0:r.internalPrepared.bytesBase64.length*3/4;capacity(r.snapshot.memoryBase64.length*3/4+cacheExtra);if(!m.prepared)m.prepared=r.internalPrepared;const s={id:id(),moduleId:m.id,snapshot:r.snapshot,summary:r.summary};sessions.set(s.id,s);job.result={...sessionInfo(s),savedBranches:details.savedBranches||[]};}job.state='done';}catch(e){job.state='error';job.error=String(e.message).slice(0,2048);}finally{clearTimeout(timer);worker.terminate();}});
+    worker.on('error',e=>{if(job.state==='running'){job.state='error';job.error=String(e.message).slice(0,2048);}clearTimeout(timer);});worker.on('exit',code=>{if(job.state==='running'){job.state='error';job.error='Worker stopped without accepting an outcome.';}clearTimeout(timer);});return job.id;
+  }
+  function cancel(job){if(job.state==='running'){job.state='cancelled';job.worker.terminate();}}
+  async function body(req){let n=0;const chunks=[];req.setTimeout(15000,()=>req.destroy());for await(const chunk of req){n+=chunk.length;if(n>MAX_BODY)throw Error('JSON request exceeds64MiB.');chunks.push(chunk);}if(!n)throw Error('A JSON body is required.');return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+  const server=http.createServer(async(req,res)=>{
+    function send(value,status=200,type='application/json'){const data=type==='application/json'?Buffer.from(JSON.stringify(value)):value;res.writeHead(status,{'Content-Type':type,'Content-Length':data.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});res.end(data);}
+    try{if(req.headers.host!==new URL(origin).host)return send({error:'Only the local workbench hostname is accepted.'},403);const url=new URL(req.url,origin),path=url.pathname;
+      if(req.method==='GET'){
+        if(path==='/api/bootstrap')return send({token,version:'0.1.0',demo:{name:'SQLite: fork an active payment transaction',defaultInput:4,defaultResponses:[{label:'Approved',value:1},{label:'Declined',value:0},{label:'Timeout',value:-1}],description:'Pause inside SQLite’s executing SQL callback. Resume sibling instances with different authorization results.'}});
+        if(path.startsWith('/api/jobs/')){const j=jobs.get(path.split('/').at(-1));if(!j)return send({error:'Unknown job.'},404);return send({state:j.state,elapsedMs:Date.now()-j.started,stage:j.stage,result:j.result,error:j.error});}
+        if(path.startsWith('/api/sessions/')){const s=sessions.get(path.split('/').at(-1));if(!s)throw Error('Unknown paused session.');return send(sessionInfo(s));}
+        if(path==='/api/memory'){const s=sessions.get(url.searchParams.get('session'));if(!s)throw Error('Unknown paused session.');const b=url.searchParams.has('branch')?branches.get(url.searchParams.get('branch')):null;if(url.searchParams.has('branch')&&(!b||b.sessionId!==s.id))throw Error('Branch does not belong to this cut.');const mem=base64(b?b.memoryBase64:s.snapshot.memoryBase64,32*1024*1024);const offset=int(Number(url.searchParams.get('offset')||0),0,mem.length,'Offset'),length=int(Number(url.searchParams.get('length')||128),1,256,'Length');const bytes=mem.subarray(offset,Math.min(offset+length,mem.length));return send({offset,hex:bytes.toString('hex'),ascii:[...bytes].map(n=>n>=32&&n<=126?String.fromCharCode(n):'.').join(''),totalBytes:mem.length});}
+        if(path==='/api/compare'){const a=branches.get(url.searchParams.get('left')),b=branches.get(url.searchParams.get('right'));if(!a||!b||a.sessionId!==b.sessionId)throw Error('Select two outcomes from the same cut.');return send({diff:diffMemory(base64(a.memoryBase64,32*1024*1024),base64(b.memoryBase64,32*1024*1024)),reportChanges:a.report&&b.report?Object.keys(a.report).filter(k=>JSON.stringify(a.report[k])!==JSON.stringify(b.report[k])).map(key=>({key,left:a.report[key],right:b.report[key]})):[]});}
+        if(path.startsWith('/api/workspaces/')){const s=sessions.get(path.split('/').at(-1));if(!s)throw Error('Unknown paused session.');const m=modules.get(s.moduleId);return send({schema:'forkwake.workspace',version:1,module:{name:m.name,sha256:m.sha256,dataBase64:m.bytes.toString('base64')},snapshot:s.snapshot,settings:{entry:s.snapshot.entry,args:s.snapshot.args},branches:[...branches.values()].filter(b=>b.sessionId===s.id).map(b=>({label:b.label,response:b.response}))});}
+        const assets={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8']};if(assets[path])return send(await fs.readFile(new URL('web/'+assets[path][0],ROOT)),200,assets[path][1]);return send({error:'Not found.'},404);
+      }
+      if(req.method!=='POST')return send({error:'Method not supported.'},405);
+      if(req.headers.origin!==origin||req.headers['x-forkwake-token']!==token)return send({error:'A write must come from this workbench.'},403);
+      if(req.headers['content-type']?.split(';')[0]!=='application/json')throw Error('Use JSON request bodies.');const value=await body(req);
+      if(path==='/api/demo'){keys(value,[]);return send(publicModule(addModule(demoBytes,'SQLite3.54: live transaction and SQL callback')));}
+      if(path==='/api/modules'){keys(value,['dataBase64','name']);if(typeof value.name!=='string'||value.name.length>256)throw Error('A bounded module name is required.');return send(publicModule(addModule(base64(value.dataBase64,MAX_MODULE),value.name)));}
+      if(path.startsWith('/api/cancel/')){keys(value,[]);const j=jobs.get(path.split('/').at(-1));if(!j)throw Error('Unknown job.');cancel(j);return send({state:j.state});}
+      if(path==='/api/jobs'){
+        if(value.operation==='capture'){keys(value,['operation','moduleId','entry','args']);const m=modules.get(value.moduleId);if(!m)throw Error('Load a module first.');if(value.entry!=='run'||!Array.isArray(value.args)||value.args.length!==1)throw Error('This ABI requires run(i32) and one argument.');int(value.args[0],-2147483648,2147483647,'Input');return send({job:start({operation:'capture',moduleBase64:m.bytes.toString('base64'),entry:'run',args:value.args},{module:m})},202);}
+        if(value.operation==='fork'){keys(value,['operation','sessionId','response','label']);const s=sessions.get(value.sessionId);if(!s)throw Error('Unknown paused session.');int(value.response,-2147483648,2147483647,'Response');if(typeof value.label!=='string'||value.label.length>64)throw Error('A branch label of at most64 characters is required.');const m=modules.get(s.moduleId);return send({job:start({operation:'fork',moduleBase64:m.bytes.toString('base64'),snapshot:s.snapshot,response:value.response},{module:m,session:s,label:value.label})},202);}
+        if(value.operation==='import'){keys(value,['operation','workspace']);const w=value.workspace;keys(w,['schema','version','module','snapshot','settings','branches']);if(w.schema!=='forkwake.workspace'||w.version!==1)throw Error('Unsupported workspace version.');keys(w.module,['name','sha256','dataBase64']);if(typeof w.module.name!=='string'||w.module.name.length>256)throw Error('Invalid saved module name.');const raw=base64(w.module.dataBase64,MAX_MODULE);if(sha(raw)!==w.module.sha256)throw Error('Saved module digest does not match its bytes.');if(!Array.isArray(w.branches)||w.branches.length>12)throw Error('Workspace supports up to12 saved branches.');for(const b of w.branches){keys(b,['label','response']);if(typeof b.label!=='string'||b.label.length>64)throw Error('Invalid saved branch label.');int(b.response,-2147483648,2147483647,'Saved response');}keys(w.settings,['entry','args']);if(w.settings.entry!=='run'||!Array.isArray(w.settings.args)||w.settings.args.length!==1||w.snapshot?.entry!==w.settings.entry||JSON.stringify(w.snapshot?.args)!==JSON.stringify(w.settings.args))throw Error('Saved settings differ from the actual cut.');int(w.settings.args[0],-2147483648,2147483647,'Saved input');const m=addModule(raw,w.module.name);return send({job:start({operation:'import',moduleBase64:raw.toString('base64'),snapshot:w.snapshot},{module:m,savedBranches:w.branches})},202);}
+        throw Error('Unknown operation.');
+      }
+      return send({error:'Not found.'},404);
+    }catch(e){if(!res.headersSent)send({error:String(e.message||'Request failed.').slice(0,2048)},400);else res.destroy();}
+  });
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});origin='http://127.0.0.1:'+server.address().port;
+  return {server,origin,close:async()=>{for(const j of jobs.values())cancel(j);await new Promise(resolve=>server.close(resolve));}};
+}
+if(process.argv[1]===fileURLToPath(import.meta.url)){const index=process.argv.indexOf('--port');const port=index<0?6350:Number(process.argv[index+1]);int(port,0,65535,'Port');const app=await createServer({port});console.log('Open '+app.origin);for(const signal of ['SIGINT','SIGTERM'])process.once(signal,async()=>{await app.close();process.exit(0);});}

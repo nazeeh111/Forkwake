@@ -1,0 +1,40 @@
+{
+  "name": "forkwake",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Fork a paused WebAssembly continuation and compare actual outcomes.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs"
+  },
+  "bin": {
+    "forkwake": "cli.mjs"
+  },
+  "dependencies": {
+    "binaryen": "132.0.0"
+  },
+  "files": [
+    "cli.mjs",
+    "server.mjs",
+    "lib",
+    "web",
+    "examples",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "README_engine.md",
+    "docs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nazeeh111/Forkwake.git"
+  },
+  "homepage": "https://github.com/nazeeh111/Forkwake",
+  "bugs": {
+    "url": "https://github.com/nazeeh111/Forkwake/issues"
+  }
+}

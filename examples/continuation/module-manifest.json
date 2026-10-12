@@ -1,0 +1,35 @@
+{
+  "memory": {
+    "module": "",
+    "base": "",
+    "initial": 2,
+    "shared": false,
+    "is64": false,
+    "max": 8
+  },
+  "globals": [
+    {
+      "name": "__stack_pointer",
+      "exportName": "__branchpoint_global_0",
+      "type": "i32"
+    },
+    {
+      "name": "__asyncify_state",
+      "exportName": "__branchpoint_global_1",
+      "type": "i32"
+    },
+    {
+      "name": "__asyncify_data",
+      "exportName": "__branchpoint_global_2",
+      "type": "i32"
+    }
+  ],
+  "tables": [],
+  "allowedImports": [
+    "env.pre_cut",
+    "env.pending_effect",
+    "env.post_cut"
+  ],
+  "originalSha256": "9b915881db8c8edc525c9fed74147192072479ebd0e4491e8b8503607d63face",
+  "instrumentedSha256": "4f68f8609b5a652a62864b35653d0cdf60c8ef6b753e90aa47d5b80b82418418"
+}

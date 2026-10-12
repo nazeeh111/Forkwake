@@ -1,0 +1,315 @@
+{
+  "schema": 1,
+  "library": "Unmodified SQLite3.54.0 amalgamation",
+  "node": "v24.14.0",
+  "rawBytes": 1230146,
+  "instrumentedBytes": 1783340,
+  "moduleHash": "77a8f546a42f16644b99e68db15c01ce31f0b0bce07730b53e61c35f178ee7bc",
+  "rawHash": "6341207f89d90606cdba3d47167bd2f55245b00880db1855e149d747e97b8f66",
+  "imports": [
+    {
+      "module": "env",
+      "name": "pre_cut",
+      "kind": "function"
+    },
+    {
+      "module": "env",
+      "name": "post_cut",
+      "kind": "function"
+    },
+    {
+      "module": "env",
+      "name": "pending_effect",
+      "kind": "function"
+    }
+  ],
+  "tables": [
+    {
+      "name": "0",
+      "initial": 298,
+      "max": 298,
+      "segments": 1,
+      "functions": 297
+    }
+  ],
+  "cut": {
+    "memoryBytes": 4194304,
+    "memoryHash": "60756489aa2f92f012e42b6d18c65a161cb90a995d8899ac77318aa3e18b2b67",
+    "capturedContinuationBytes": 484,
+    "globals": {
+      "__branchpoint_global_0": 130128,
+      "__branchpoint_global_2": 0,
+      "__branchpoint_global_3": 187552
+    },
+    "bridge": {
+      "prefix": [
+        {
+          "stage": 1,
+          "value": 1
+        },
+        {
+          "stage": 2,
+          "value": 757304
+        },
+        {
+          "stage": 3,
+          "value": 610839870
+        },
+        {
+          "stage": 4,
+          "value": 1
+        }
+      ],
+      "suffix": [],
+      "pending": {
+        "kind": 801,
+        "request": 4,
+        "db": 715112,
+        "cursor": 757304
+      },
+      "sealed": true,
+      "ownedCounter": 4
+    },
+    "liveSQLite": {
+      "db": 715112,
+      "readCursor": 757304,
+      "paymentStatement": 751304,
+      "paymentStatementBusy": 1,
+      "transactionAutocommit": 0
+    }
+  },
+  "branches": [
+    {
+      "result": 610839834,
+      "response": 1,
+      "autocommitAtResume": 0,
+      "cursorBusyAtResume": 1,
+      "cursorIdSum": 6,
+      "cursorRows": 3,
+      "orders": 3,
+      "receipts": 1,
+      "tempStaging": 1,
+      "attempts": 0,
+      "autocommitAfter": 1,
+      "heapChecksum": 822927360,
+      "nestedLocalChecksum": 610839661,
+      "heapMutatedWord": 11998,
+      "receiptTotal": 120,
+      "forbiddenFileCalls": 0,
+      "sqliteHeapBytes": 95776,
+      "deniedAttempts": 0,
+      "timeoutAttempts": 0,
+      "sqlCallbackLiveLocal": 877174142,
+      "sqlCallbackEntries": 1,
+      "paymentStatementBusyInsideEffect": 1,
+      "transactionAutocommitInsideEffect": 0,
+      "database": {
+        "orders": [
+          {
+            "id": 1,
+            "total": 15,
+            "status": "old"
+          },
+          {
+            "id": 2,
+            "total": 27,
+            "status": "old"
+          },
+          {
+            "id": 3,
+            "total": 120,
+            "status": "paid"
+          }
+        ],
+        "receipts": [
+          {
+            "id": 3,
+            "total": 120,
+            "status": "paid"
+          }
+        ],
+        "attempts": [],
+        "staging": [
+          {
+            "id": 3,
+            "total": 120
+          }
+        ]
+      },
+      "entries": 1,
+      "db": 715112,
+      "suffix": [
+        {
+          "stage": 4,
+          "value": 877174142
+        },
+        {
+          "stage": 3,
+          "value": 120
+        },
+        {
+          "stage": 2,
+          "value": 610839670
+        },
+        {
+          "stage": 1,
+          "value": 610839834
+        }
+      ]
+    },
+    {
+      "result": 610839830,
+      "response": 0,
+      "autocommitAtResume": 0,
+      "cursorBusyAtResume": 1,
+      "cursorIdSum": 3,
+      "cursorRows": 2,
+      "orders": 2,
+      "receipts": 0,
+      "tempStaging": 0,
+      "attempts": 1,
+      "autocommitAfter": 1,
+      "heapChecksum": 822927360,
+      "nestedLocalChecksum": 610839661,
+      "heapMutatedWord": 11999,
+      "receiptTotal": 0,
+      "forbiddenFileCalls": 0,
+      "sqliteHeapBytes": 95776,
+      "deniedAttempts": 1,
+      "timeoutAttempts": 0,
+      "sqlCallbackLiveLocal": 877174142,
+      "sqlCallbackEntries": 1,
+      "paymentStatementBusyInsideEffect": 1,
+      "transactionAutocommitInsideEffect": 0,
+      "database": {
+        "orders": [
+          {
+            "id": 1,
+            "total": 15,
+            "status": "old"
+          },
+          {
+            "id": 2,
+            "total": 27,
+            "status": "old"
+          }
+        ],
+        "receipts": [],
+        "attempts": [
+          "denied"
+        ],
+        "staging": []
+      },
+      "entries": 1,
+      "db": 715112,
+      "suffix": [
+        {
+          "stage": 4,
+          "value": 877174142
+        },
+        {
+          "stage": 3,
+          "value": 0
+        },
+        {
+          "stage": 2,
+          "value": 610839666
+        },
+        {
+          "stage": 1,
+          "value": 610839830
+        }
+      ]
+    },
+    {
+      "result": 610839830,
+      "response": 4294967295,
+      "autocommitAtResume": 0,
+      "cursorBusyAtResume": 1,
+      "cursorIdSum": 3,
+      "cursorRows": 2,
+      "orders": 2,
+      "receipts": 0,
+      "tempStaging": 0,
+      "attempts": 1,
+      "autocommitAfter": 1,
+      "heapChecksum": 822927360,
+      "nestedLocalChecksum": 610839661,
+      "heapMutatedWord": 4294955296,
+      "receiptTotal": 0,
+      "forbiddenFileCalls": 0,
+      "sqliteHeapBytes": 95776,
+      "deniedAttempts": 0,
+      "timeoutAttempts": 1,
+      "sqlCallbackLiveLocal": 877174142,
+      "sqlCallbackEntries": 1,
+      "paymentStatementBusyInsideEffect": 1,
+      "transactionAutocommitInsideEffect": 0,
+      "database": {
+        "orders": [
+          {
+            "id": 1,
+            "total": 15,
+            "status": "old"
+          },
+          {
+            "id": 2,
+            "total": 27,
+            "status": "old"
+          }
+        ],
+        "receipts": [],
+        "attempts": [
+          "timeout"
+        ],
+        "staging": []
+      },
+      "entries": 1,
+      "db": 715112,
+      "suffix": [
+        {
+          "stage": 4,
+          "value": 877174142
+        },
+        {
+          "stage": 3,
+          "value": 0
+        },
+        {
+          "stage": 2,
+          "value": 610839666
+        },
+        {
+          "stage": 1,
+          "value": 610839830
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "rawOriginalAAComparisons": 3,
+    "rawOriginalBranchComparisons": 3,
+    "liveTransactionRestored": true,
+    "livePreparedCursorRestored": true,
+    "pauseInsideSQLiteVdbeCallback": true,
+    "sqlCallbackPrefixNotReplayed": true,
+    "realCommitRollbackReceipts": true,
+    "allocatedHeapCanaryIndependentOracle": true,
+    "preCutNotReplayed": true,
+    "restartFalsifierRejected": true,
+    "memoryAtCutIdentical": true,
+    "allMutableGlobalsRestored": true,
+    "sourceSnapshotAndSiblingIsolated": true,
+    "branchOrderIndependent": true,
+    "hostFileNetworkImportsAbsent": true,
+    "guestFileAttemptsZero": true
+  },
+  "limits": [
+    "One pending cut",
+    "Same exact transformed module required",
+    "No shared memory or threads",
+    "Only owned immutable unexported static function table",
+    "Guest sealed VFS: in-memory database only; no external files",
+    "No general native process cloning or WASI capability cloning"
+  ]
+}

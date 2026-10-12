@@ -1,0 +1,190 @@
+{
+  "release": "wasi-sdk-34",
+  "asset": "wasi-sdk-34.0-arm64-macos.tar.gz",
+  "sha256": "9c59398106b417f8f14913380fdf0097a8cc0ff4af9eb3ce0065a859e88d49e9",
+  "bytes": 180322002,
+  "upstream_digest": "sha256:9c59398106b417f8f14913380fdf0097a8cc0ff4af9eb3ce0065a859e88d49e9",
+  "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-arm64-macos.tar.gz",
+  "schema": "forkwake.sdk-provenance",
+  "version": 1,
+  "sdkRepository": "https://github.com/WebAssembly/wasi-sdk",
+  "sdkCommit": "5a0bf653a1a06e1c18867567c5937006d3394a69",
+  "sdkVersionFile": "34.0\nwasi-libc: 2e6fb9d8ee0c\nllvm: 895aa2c896ad\nllvm-version: 23.1.0\nconfig: f992bcc08219\n",
+  "compiler": {
+    "version": "23.1.0-wasi-sdk",
+    "defaultTarget": "wasm32-unknown-wasip1",
+    "llvmRepository": "https://github.com/llvm/llvm-project",
+    "llvmCommit": "895aa2c896ada719451be2e3673c83da8ddf1141"
+  },
+  "wasiLibc": {
+    "repository": "https://github.com/WebAssembly/wasi-libc",
+    "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13"
+  },
+  "sdkBuildConfigCommit": "f992bcc08219edb283d2ab31dd3871a4a0e8220e",
+  "sdkLlvmPatchFiles": [
+    {
+      "name": "llvm-pr-168449.patch",
+      "gitBlobSha": "f5b873844ff19e98027f30b3611a4af300732ec1",
+      "url": "https://github.com/WebAssembly/wasi-sdk/blob/5a0bf653a1a06e1c18867567c5937006d3394a69/src/llvm-pr-168449.patch"
+    },
+    {
+      "name": "llvm-pr-186054.patch",
+      "gitBlobSha": "61ffe2ef0d0dab57a1a9de52c771db5696a22a55",
+      "url": "https://github.com/WebAssembly/wasi-sdk/blob/5a0bf653a1a06e1c18867567c5937006d3394a69/src/llvm-pr-186054.patch"
+    },
+    {
+      "name": "llvm-undo-part-of-194317.patch",
+      "gitBlobSha": "a5c74c0366b02899940fee6a9f409eb87ae36f7f",
+      "url": "https://github.com/WebAssembly/wasi-sdk/blob/5a0bf653a1a06e1c18867567c5937006d3394a69/src/llvm-undo-part-of-194317.patch"
+    }
+  ],
+  "linkedRuntimeLibraryInputs": [
+    {
+      "sdkRelativePath": "share/wasi-sysroot/lib/wasm32-wasip1/libc.a",
+      "bytes": 3245870,
+      "sha256": "a9aff53312240258085fd94da05e18545f4c98b2f6a91ce4985b519eb8159fb9"
+    },
+    {
+      "sdkRelativePath": "share/wasi-sysroot/lib/wasm32-wasip1/crt1-reactor.o",
+      "bytes": 1601,
+      "sha256": "f75d28ec3e0bef066669c461fb093d3c0ce806b5083c472cc6f55c85983cc713"
+    },
+    {
+      "sdkRelativePath": "lib/clang/23/lib/wasm32-unknown-wasip1/libclang_rt.builtins.a",
+      "bytes": 470462,
+      "sha256": "41b9a4712800c3de6d0e853d1ce420ac383a2399b1d262ee880bcbbb0214661a"
+    }
+  ],
+  "shippedWasm": {
+    "file": "workflow.raw.wasm",
+    "sha256": "6341207f89d90606cdba3d47167bd2f55245b00880db1855e149d747e97b8f66",
+    "compileFlagsFile": "build.sh"
+  },
+  "licenses": [
+    {
+      "file": "licenses/WASI-LIBC-LICENSE.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "LICENSE",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/LICENSE",
+      "bytes": 910,
+      "sha256": "2711a8b5a5cdfef0e639f96c1aca12ae23d7d64a02d0507f1bdf14d2b27bbc3a",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/WASI-LIBC-APACHE-2.0.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "LICENSE-APACHE",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/LICENSE-APACHE",
+      "bytes": 10847,
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/WASI-LIBC-APACHE-2.0-LLVM.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "LICENSE-APACHE-LLVM",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/LICENSE-APACHE-LLVM",
+      "bytes": 12243,
+      "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/WASI-LIBC-MIT.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "LICENSE-MIT",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/LICENSE-MIT",
+      "bytes": 1023,
+      "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/MUSL-COPYRIGHT.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "libc-top-half/musl/COPYRIGHT",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/libc-top-half/musl/COPYRIGHT",
+      "bytes": 6196,
+      "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/CLOUDLIBC-LICENSE.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "libc-bottom-half/cloudlibc/LICENSE",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/libc-bottom-half/cloudlibc/LICENSE",
+      "bytes": 1292,
+      "sha256": "c8b789cf5a746611e6300a0cc7750dbf92b61912a709d04e639245f7290656d0",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/MUSL-FTS-COPYING.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "fts/musl-fts/COPYING",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/fts/musl-fts/COPYING",
+      "bytes": 1514,
+      "sha256": "55af87e4017668f54467a3380e7ebbac5e672d8c763bfe95e6fc882a6fdc4046",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/MUSL-FTS-NOTICE.md",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "fts/musl-fts/NOTICE.wasi-libc.md",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/fts/musl-fts/NOTICE.wasi-libc.md",
+      "bytes": 407,
+      "sha256": "6aa429513e3e883111aceab81f80f9da38613b7f74c966393ff33470c93a9daa",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/COMPILER-RT-LICENSE.txt",
+      "repository": "llvm/llvm-project",
+      "commit": "895aa2c896ada719451be2e3673c83da8ddf1141",
+      "sourcePath": "compiler-rt/LICENSE.TXT",
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/895aa2c896ada719451be2e3673c83da8ddf1141/compiler-rt/LICENSE.TXT",
+      "bytes": 16708,
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/WASI-SDK-LICENSE.txt",
+      "repository": "WebAssembly/wasi-sdk",
+      "commit": "5a0bf653a1a06e1c18867567c5937006d3394a69",
+      "sourcePath": "LICENSE",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-sdk/5a0bf653a1a06e1c18867567c5937006d3394a69/LICENSE",
+      "bytes": 12243,
+      "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
+      "fullUpstreamFile": true
+    },
+    {
+      "file": "licenses/DLMALLOC-NOTICE.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "dlmalloc/src/malloc.c",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/dlmalloc/src/malloc.c",
+      "bytes": 480,
+      "sha256": "854638742c93abbd4ec57d2e9b306d29b30a71705ca43e68c6f584084797034e",
+      "fullUpstreamFile": false,
+      "sourceSha256": "9e7ce51d813331ae87ef235f6ca2d5ce2167692e30bb51a173513e3754a67f8f",
+      "extract": "Complete leading copyright/license notice, before technical documentation"
+    },
+    {
+      "file": "licenses/EMMALLOC-NOTICE.txt",
+      "repository": "WebAssembly/wasi-libc",
+      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
+      "sourcePath": "emmalloc/emmalloc.c",
+      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/emmalloc/emmalloc.c",
+      "bytes": 263,
+      "sha256": "5efe360cdef9eb9553a4bcbf7945f1c9789e795f33a7f215d966d239c693b2d2",
+      "fullUpstreamFile": false,
+      "sourceSha256": "c5b52c424c9101ba9b2d1338997e1758c9fdf369ab0450d9b72e9544fe482166",
+      "extract": "Complete leading copyright/license notice, before technical documentation"
+    }
+  ],
+  "scope": "The SDK/compiler executables are not bundled. The SQLite WASM includes statically linked wasi-libc/libc/reactor and compiler-rt runtime code; upstream component notices are retained. Some retained library notices cover components removed by the linker."
+}
