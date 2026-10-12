@@ -49,3 +49,33 @@ Fixed unexported owned function tables are supported up to 4,096 entries. Only f
 Run `node --test tests/runtime.test.mjs`. Tests compare actual resumed compiled C and SQLite branches with repeated uninterrupted original-module controls. They exercise nested saved locals, actual allocation, live SQLite transaction and prepared cursor state, execution inside a registered SQLite SQL callback, exact i64 globals, memory growth, static indirect calls, sibling/cut isolation and restart-from-entry rejection. Negative cases cover forged and incompatible cuts, foreign globals, unsafe integers, callbacks during initialization, a second cut and unsupported module shapes.
 
 These are runtime observations on the shipped fixtures and explicit restoration checks. They do not prove arbitrary Asyncify transformation correctness or universal application equivalence. The guest ABI, single-cut scope and absence of external capabilities are part of the result.
+
+## Sequential operations (0.2)
+
+The original operations above keep schema1 and their single-cut behavior. The sequential family uses schema2, the same validated closed module and the same authenticated prepared cache:
+
+```js
+const cut = await handle({operation:'sequence-capture', moduleBase64, entry:'run', args:[4]}, trusted);
+const next = await handle({operation:'sequence-advance', moduleBase64, snapshot:cut.snapshot, response:1}, trusted);
+// next has snapshot+summary when it reaches another effect,
+// or finalMemoryBase64+globals+summary when it actually returns.
+const reopened = await handle({operation:'sequence-import', moduleBase64, snapshot:next.snapshot}, trusted);
+```
+
+Every cut binds the resolved `{pending:[u32,u32,u32,u32],response:i32}` decision history and cumulative suffix along with complete memory, globals, stack, entry and module identities. Advance first verifies the seal, restores into an independent guest, returns the chosen response at the identical pending arguments, and runs only the new suffix. It may unwind again into a fresh saved continuation. Previous cut objects and sibling instances remain independent. Prefix callbacks remain sealed throughout; use `post_cut` to report work between later effects. Repeated identical pending arguments are allowed because the actual saved execution identifies the suspended call.
+
+A maximum of32 responses may be resolved. An attempted33rd pending effect rejects. History remains bounded to4,096 events; all previous module/accessor/memory/table restrictions apply. The first root capture requires a pending effect; entry returning before any effect is an error. Initializers run before restoration in every fresh instance and cannot invoke the bridge. No new host capabilities are supplied.
+
+Deep import validates the snapshot's bounded shape and module binding, captures the initial program once, advances each declared response on the resulting authenticated continuations, and compares **all** final captured fields excluding the old seal. A history that changes the path, data or stack rejects; a declared history that already returns also rejects. The result reports `importReexecutedPrefix:true` and `importReexecutedDecisions:N`. Subsequent advances do not replay these decisions.
+
+`runSequenceReference(raw,args,responses)` is a controlled-fixture route that runs the original untransformed program uninterrupted with exactly those responses. Missing and unused responses reject, preventing comparisons with a different path. It is not the untrusted worker route.
+
+## Finite counterfactual search
+
+`searchFutures` accepts an actual paused node, a callback that advances it, and a declared response alphabet, baseline, additional decision limit, edge-attempt limit and exact terminal i32 goal. It orders pending edges by change count relative to the supplied baseline. An edge's cost is a lower bound on any completion reachable from it. Therefore a found terminal has a certified minimum only if no cheaper queue edge or unresolved failed/depth-limited edge remains. Equal-cost alternatives need not all be explored to certify the minimum count. A search may reuse already executed edges without running the guest again; its report distinguishes those reuses.
+
+`exhausted` requires an empty frontier, no execution errors, no depth truncations, no budget interruption and no cancellation. A found witness may be minimum within the stated bounds while more equal/higher-cost futures remain. No-match reports do not establish behavior for unlisted responses, more decisions, different inputs or external capabilities. Budget/error reports preserve valid previously accepted nodes but make no completeness claim. Cancellation terminates the current worker and prevents its late result from being accepted.
+
+The sequence server retains at most four modules (8MiB each), four sessions,64 nodes per session,24 recent jobs and two active sequence jobs, within a192MiB logical module/prepared/memory budget. The original workbench's separate64MiB budget remains. Each worker has the existing90-second preparation and30-second guest execution deadlines. CLI exploration bounds retained cuts at128MiB and64 nodes, and omits full terminal memory after deriving actual reports. These are admission limits, not performance guarantees or an operating-system sandbox.
+
+Version2 portable workspaces contain exactly `schema`, `version`, `module`, `snapshot`, `settings` and empty `branches`. They transport a chosen paused cut, not an entire saved tree or a trusted outcome report. The module and complete guest memory may contain private information; exports are voluntary local files. No authentication key or private transform cache is exported. Original version1 workspaces remain supported by the original commands and interface.

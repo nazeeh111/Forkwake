@@ -1,0 +1,69 @@
+{
+  "schema": "forkwake.owned-fulfillment-source",
+  "version": 1,
+  "module": {
+    "file": "workflow.raw.wasm",
+    "bytes": 1233386,
+    "sha256": "1c1973be7efa3b9121ed79348ad02312c8a964fdde5813b4bce2cecc16d87c51",
+    "memoryBytes": 4194304,
+    "memoryMaximumBytes": 4194304
+  },
+  "ownedSources": {
+    "workflow.c": {
+      "bytes": 11485,
+      "sha256": "7a117fb077260c2075b94789b33a35ca780d1d4b9f9cc7a8bf17e35baa6d6f46"
+    },
+    "build.sh": {
+      "bytes": 728,
+      "sha256": "67159b5b5ff2de4418d8632db45480e4af39d3e8745bc510c086bc457cd105f5"
+    }
+  },
+  "sqlite": {
+    "version": "3.54.0",
+    "unmodifiedCompiledSources": {
+      "sqlite3.c": {
+        "bytes": 9580800,
+        "sha256": "2da161e310ef0aba3465f22a4d12b8a43723236f0942fa76e8aac523c3317243",
+        "matchesOfficialArchive": true
+      },
+      "sqlite3.h": {
+        "bytes": 695737,
+        "sha256": "cd20a2877bc82b94e36c1093b727dd87cfa3c1d581aac6e240925535cbd90166",
+        "matchesOfficialArchive": true
+      }
+    },
+    "archiveManifest": "../sqlite/source-manifest.json",
+    "license": "Public domain"
+  },
+  "linkedRuntime": {
+    "sdkManifest": "../sqlite/sdk-manifest.json",
+    "licenses": "../sqlite/licenses/",
+    "wasiSdkRelease": "wasi-sdk-34",
+    "compilerVersion": "23.1.0-wasi-sdk"
+  },
+  "layout": "fixture-layout.json",
+  "rebuild": {
+    "completeBytesIdentical": true,
+    "outputBasename": "workflow.raw.wasm"
+  },
+  "claims": {
+    "intentionalOwnedPolicyDefect": true,
+    "notSQLiteDefect": true,
+    "rawUniquePaths": {
+      "faulty": 13,
+      "corrected": 11
+    },
+    "supportedChoices": [
+      -1,
+      0,
+      1
+    ],
+    "violatingSequence": [
+      1,
+      -1,
+      -1,
+      1
+    ],
+    "invariant": "SELECT count(*) FROM shipments s LEFT JOIN receipts r ON r.order_id=s.order_id WHERE s.status='shipped' AND r.order_id IS NULL"
+  }
+}

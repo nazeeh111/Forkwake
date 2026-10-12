@@ -1,0 +1,16 @@
+{
+  "sha256": "1c1973be7efa3b9121ed79348ad02312c8a964fdde5813b4bce2cecc16d87c51",
+  "bytes": 1233386,
+  "resultsOffset": 188432,
+  "jsonOffset": 712880,
+  "jsonCapacity": 8192,
+  "fields": 32,
+  "memoryBytes": 4194304,
+  "effects": {
+    "901": "Reserve inventory",
+    "902": "Authorize payment",
+    "903": "Dispatch shipment",
+    "904": "Retry payment"
+  },
+  "source": "Owned pure layout exports; reports read actual SQL query output and result words from captured or final guest memory."
+}

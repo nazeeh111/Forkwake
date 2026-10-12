@@ -32,6 +32,8 @@ jobs:
           mkdir "$RUNNER_TEMP/installed-forkwake"
           cd "$RUNNER_TEMP/installed-forkwake"
           npm init -y
-          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/forkwake-0.1.0.tgz"
+          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/forkwake-0.2.0.tgz"
           ./node_modules/.bin/forkwake demo --out "$RUNNER_TEMP/sqlite-futures"
           node "$GITHUB_WORKSPACE/scripts/check-demo.mjs" "$RUNNER_TEMP/sqlite-futures/outcomes.json"
+          ./node_modules/.bin/forkwake explore --input 4 --goal 1 --out "$RUNNER_TEMP/sqlite-search"
+          node "$GITHUB_WORKSPACE/scripts/check-search.mjs" "$RUNNER_TEMP/sqlite-search/search.json"

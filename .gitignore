@@ -4,3 +4,5 @@ node_modules/
 sqlite-futures/
 c-futures/
 more-futures/
+
+/node_modules

@@ -19,7 +19,7 @@ function inspectFinal(module,memory){const instance=new WebAssembly.Instance(mod
 
 test('installed-style bin symlink prints help and executes a real compiled continuation',async t=>{
  const base=await temporary(t),binDirectory=path.join(base,'node_modules','.bin');await fs.mkdir(binDirectory,{recursive:true});const bin=path.join(binDirectory,'forkwake');await fs.symlink(CLI,bin,'file');
- const help=await command(['--help'],{entry:bin});assert.equal(help.code,0,help.stderr);assert.match(help.stdout,/Forkwake: fork one paused/);
+ const help=await command(['--help'],{entry:bin});assert.equal(help.code,0,help.stderr);assert.match(help.stdout,/Forkwake:/);
  const out=path.join(base,'result'),run=await command(['run','--module',SMALL,'--input','37','--responses','9','--out',out],{entry:bin});assert.equal(run.code,0,run.stderr);assert.equal(JSON.parse(run.stdout).branches,1);const outcomes=await readJson(path.join(out,'outcomes.json')),raw=await fs.readFile(SMALL),control=reference(raw,37,9);assert.equal(outcomes.branches[0].summary.returnU32,control.value);assert.deepEqual(outcomes.branches[0].summary.suffix,control.suffix);assert.equal(outcomes.branches[0].summary.checks.prefixNotReexecuted,true);
  const wrapper=path.join(base,'import-only.mjs');await fs.writeFile(wrapper,`import ${JSON.stringify(new URL('../cli.mjs',import.meta.url).href)};\nconsole.log('import-only');\n`);const imported=await command(['--help'],{entry:wrapper});assert.equal(imported.code,0,imported.stderr);assert.equal(imported.stdout,'import-only\n');
 });
@@ -43,7 +43,7 @@ test('CLI keeps existing output bytes, rejects strict arguments and bounds input
  for(const argv of [['bad'],['serve','--port','-1'],['serve','--port','65536'],['serve','--out','x'],['demo','--out','x','--out','y'],['run','--module','x','--input','2147483648','--responses','1','--out','x'],['run','--module','x','--input','1.0','--responses','1','--out','x'],['run','--module','x','--input','0','--responses','1,,2','--out','x'],['run','--module','x','--input','0','--responses','1, 2','--out','x'],['run','--module','x','--input','0','--responses',Array(13).fill('1').join(','),'--out','x'],['resume','--workspace','x','--responses','1'],['demo','--out','x','--unknown']])assert.throws(()=>parseArgs(argv));
  assert.equal(parseArgs(['run','--module','x','--input','-2147483648','--responses','2147483647,-2147483648','--out','x']).input,-2147483648);
  const huge=path.join(base,'huge.wasm'),handle=await fs.open(huge,'wx');await handle.truncate(8*1024*1024+1);await handle.close();const limited=await command(['run','--module',huge,'--input','0','--responses','1','--out',path.join(base,'limited')]);assert.notEqual(limited.code,0);assert.match(limited.stderr,/at most 8388608 bytes/);assert.equal(await fs.stat(path.join(base,'limited')).catch(()=>null),null);
- const help=await command(['--help']);assert.equal(help.code,0);assert.match(help.stdout,/independently re-executes/);assert.match(help.stdout,/One pending cut/);
+ const help=await command(['--help']);assert.equal(help.code,0);assert.match(help.stdout,/independently re-executes/);assert.match(help.stdout,/one pending cut/i);
 });
 
 test('worker deadlines and cancellation terminate actual nonreturning forks; later siblings still work',async()=>{
@@ -75,5 +75,5 @@ test('CLI demo reports actual SQLite rows and preserves the executing SQL callba
 test('CLI serve binds its actual local server and exits on a signal',async t=>{
  const child=spawn(process.execPath,[CLI,'serve','--port','0'],{cwd:ROOT,stdio:['ignore','pipe','pipe']});let output='',error='';child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>error+=chunk);t.after(()=>{if(child.exitCode===null)child.kill('SIGKILL');});
  const exited=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})));const until=Date.now()+10000;while(!output.includes('Open ')&&Date.now()<until&&child.exitCode===null)await new Promise(resolve=>setTimeout(resolve,25));assert.match(output,/Open http:\/\/127\.0\.0\.1:\d+/,error);
- const origin=output.match(/Open (http:\/\/127\.0\.0\.1:\d+)/)[1];const response=await fetch(origin+'/api/bootstrap');assert.equal(response.status,200);assert.equal((await response.json()).version,'0.1.0');child.kill('SIGTERM');const stopped=await exited;assert.equal(stopped.code,143,error);
+ const origin=output.match(/Open (http:\/\/127\.0\.0\.1:\d+)/)[1];const response=await fetch(origin+'/api/bootstrap');assert.equal(response.status,200);assert.equal((await response.json()).version,(await readJson(path.join(ROOT,'package.json'))).version);child.kill('SIGTERM');const stopped=await exited;assert.equal(stopped.code,143,error);
 });

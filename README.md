@@ -1,10 +1,10 @@
 # Forkwake
 
-**Capture a running WebAssembly program at one pending event. Give the saved continuation different answers. Inspect the futures it actually executes.**
+**Branch a live WebAssembly execution through a chain of decisions. Search its actual alternate futures for the smallest change that reaches a chosen result.**
 
 Forkwake saves the suspended call stack, linear memory, mutable integer globals and owned event history. Each branch restores that state into an independent guest instance and resumes the pending call. It does not restart the program and feed it different inputs.
 
-The included example pauses **inside SQLite's SQL engine**, during a payment authorization callback. An open transaction, two busy prepared statements, nested C locals, allocated memory and an unfinished SQL expression remain live at the cut. Approval commits a paid order and receipt. Denial and timeout roll back, then record different attempts. These results are read from actual SQLite rows in each branch's final memory.
+The sequential example pauses **inside SQLite's SQL engine** at reservation, payment, retry and dispatch decisions. Its open transaction, two busy prepared statements, nested C locals, heap and unfinished SQL expression survive repeated cuts. A deliberately faulty timeout policy can ship an order without a receipt; its correction stops that path. The search finds the actual response sequence and reports the declared search space, coverage and unresolved work. This is an owned demonstration, not a newly discovered SQLite defect. The original single-event payment example remains available.
 
 ![Actual SQLite execution branches](docs/workbench.png)
 
@@ -19,11 +19,29 @@ npm ci --ignore-scripts
 npm start
 ```
 
-Open the printed loopback address, normally `http://127.0.0.1:6350`. Load the SQLite example, run to the pending event, and choose Approved, Declined or Timeout. Compare database rows, the execution suffix, globals and exact memory differences. You can also enter any signed 32-bit response.
+Open the printed loopback address, normally `http://127.0.0.1:6350`, and follow **Sequential futures**. Load the fulfillment example, capture input `4`, and find return `1` using choices `1,0,-1`, baseline `1,1,1,1` and four additional decisions. The witness `[1,-1,-1,1]` changes two decisions from that baseline. Inspect the real shipment and missing receipt. Repeat with corrected input `-4`: all eleven terminal futures in that declared tree return `0`. You can also advance any paused node manually and compare actual memory and history. The original one-event workbench remains at `/`.
 
 The first capture rewrites the compiled module with Binaryen Asyncify. Later branches reuse the validated transformation and create fresh guest instances. On the development Mac, the 1.17 MiB SQLite module took about 13 seconds to capture and a cached fork about 0.24 seconds. These are example measurements, not a performance guarantee. The hosted Mac runner took about 41 seconds to prepare the same workload. Preparation has a separate 90-second deadline; guest initialization, execution and result capture have a 30-second deadline. Jobs can be cancelled during either phase.
 
-## Reproducible cuts, outside the browser
+## Search and continue outside the browser
+
+```sh
+node cli.mjs explore --input 4 --goal 1 --out ./fulfillment-search
+node cli.mjs explore --module ./examples/fulfillment/workflow.raw.wasm \
+  --input -4 --goal 1 --out ./corrected-search
+node cli.mjs continue --workspace ./fulfillment-search/workspace.forkwake \
+  --responses 1,-1,-1 --out ./paused-before-dispatch
+node cli.mjs continue --workspace ./paused-before-dispatch/workspace.forkwake \
+  --responses 1 --out ./reproduced-failure
+```
+
+`explore` orders concrete executions by the number of responses differing from the explicit baseline. It reuses saved continuations and existing verified edges. `search.json` records scope and coverage; `nodes.json` contains actual execution summaries and interpreted rows only for the exact owned example. A minimum is claimed only when cheaper possibilities have been resolved. A budget limit, execution error or unresolved depth boundary prevents the corresponding guarantee. No match means only what the completed declared search establishes.
+
+Version2 workspaces export **one chosen paused cut**, including its exact resolved history. Import runs the root prefix once, then executes that history and demands identical memory, globals and saved stack before resealing. It does not accept saved outcomes as evidence. `continue` advances that validated cut; it saves a new cut if still paused or the actual terminal outcome if finished. The interface can export and reopen the selected paused node, including deep cuts.
+
+The response alphabet supports up to five distinct signed integers, search depth up to32 total decisions, and at most128 edge attempts per search. These are explicit finite bounds, not symbolic execution or universal application proof. [Engine details](README_engine.md) and [the real SQLite workload](examples/fulfillment/README.md) explain the contract and deliberate defect.
+
+## Original single-cut commands
 
 ```sh
 node cli.mjs demo --out ./sqlite-futures
@@ -60,11 +78,11 @@ Allowed imports:
 | `env.pending_effect` | `(i32, i32, i32, i32) -> i32` | Suspends; each branch supplies its response |
 | `env.post_cut` | `(i32, i32) -> void` | Optional opaque suffix event |
 
-Only `pending_effect` is required. Its four arguments are captured as unsigned bit patterns and must match when the stack rewinds. Reaching a second pending event is rejected. Use the included freestanding C example as a complete integration reference; the SQLite example shows a much larger unchanged library running through this boundary. Both include source and build recipes. Building examples requires the free official WASI SDK, not running them. For example, set `WASI_SDK_PATH` to the SDK root and run `sh examples/sqlite/build.sh`. To preserve the supplied binary, set `FORKWAKE_BUILD_OUT` to a new directory ending in `workflow.raw.wasm`. The compiler records the output basename in a WebAssembly name section, so other basenames change its hash even when executable sections are identical.
+Only `pending_effect` is required. Its four arguments are captured as unsigned bit patterns and must match when the stack rewinds. The original single-cut commands reject a second pending event. Sequential operations capture it and allow up to32 resolved decisions. Prefix events are allowed only before the first cut; use suffix events for work between later decisions. Use the included freestanding C example as a complete integration reference; the SQLite example shows a much larger unchanged library running through this boundary. Both include source and build recipes. Building examples requires the free official WASI SDK, not running them. For example, set `WASI_SDK_PATH` to the SDK root and run `sh examples/sqlite/build.sh`. To preserve the supplied binary, set `FORKWAKE_BUILD_OUT` to a new directory ending in `workflow.raw.wasm`. The compiler records the output basename in a WebAssembly name section, so other basenames change its hash even when executable sections are identical.
 
 The two storage accessors must be pure, bounded functions. Forkwake statically checks their complete owned call graph before execution. Constants, locals, global reads and nontrapping scalar arithmetic are supported; memory loads/writes, imports, growth, loops, recursion and other unsupported forms reject. Optional `_initialize()` runs in fresh instances before restoration and cannot call the bridge. A module start function rejects.
 
-Fixed private function tables are supported and reconstructed from the same module in each instance. Imported/exported/mutable tables, shared/imported/multiple memories, memory64, passive segment state and unowned imports reject. Classification is conservative, including unreachable unsupported code. Modules are capped at 8 MiB, Asyncify storage at 1 MiB, event history at 4,096 records. The workbench retains at most four modules, four cuts and twelve branches within a 64 MiB logical data budget; export and restart when full. See [the engine contract](README_engine.md) for exact restoration and authentication details.
+Fixed private function tables are supported and reconstructed from the same module in each instance. Imported/exported/mutable tables, shared/imported/multiple memories, memory64, passive segment state and unowned imports reject. Classification is conservative, including unreachable unsupported code. Modules are capped at 8 MiB, Asyncify storage at 1 MiB, event history at 4,096 records. The original workbench retains at most four modules, four cuts and twelve branches within a64MiB logical data budget. Sequential work has separate bounded node/session storage; export a paused cut and restart when full. See [the engine contract](README_engine.md) for exact restoration and authentication details.
 
 ## What establishes the result
 
@@ -72,7 +90,7 @@ Fixed private function tables are supported and reconstructed from the same modu
 npm test
 ```
 
-Tests compare resumed compiled C and SQLite executions with uninterrupted original-module controls, including both repeated controls and sibling isolation. SQLite comparisons include every exported result word and actual JSON query rows. The suite also checks exact i64 global restoration, memory growth, nested frames, sealed prefix callbacks, portable import revalidation, forged cuts/caches, side-effecting storage accessors, unsupported modules, HTTP write boundaries and cancellation. CLI tests exercise packaged workflows and reject invalid input and overwrite attempts.
+Tests compare resumed compiled C and SQLite executions with uninterrupted original-module controls, including both repeated controls and sibling isolation. SQLite comparisons include every exported result word and actual JSON query rows. All24 terminal fulfillment paths are compared with original-module controls. Independent sequence probes cover repeated identical effects, variable path lengths, 32 decisions and rejection of a33rd, deep imports and worker loops. Search checks distinguish proven finite minima, complete no-match enumeration and unresolved budgets/errors. The suite also checks exact i64 global restoration, memory growth, nested frames, sealed prefix callbacks, portable import revalidation, forged cuts/caches, side-effecting storage accessors, unsupported modules, HTTP write boundaries and cancellation. CLI tests exercise packaged workflows and reject invalid input and overwrite attempts.
 
 The saved SQLite frame is 484 bytes; the complete captured memory is 4 MiB. The fixture separately reports actual SQLite allocation and a 64 KiB allocated canary. These are different measures. Restoration checks and these controls are runtime evidence on the shipped cases, not a proof of every possible Asyncify transformation or application equivalence.
 
