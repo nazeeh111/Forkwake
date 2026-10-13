@@ -2,7 +2,7 @@
 
 const $ = id => document.getElementById(id);
 const SESSION_KEY = 'forkwake.sequence-session.v2';
-const state = {bootstrap:null,module:null,session:null,selected:null,tab:'outcome',busy:false,job:null,cancelRequested:false,comparison:null,memoryOffset:0,memoryRequest:0,jobTitle:'',observationLost:false,mode:'javascript',editorDirty:false,editorBoundSha:null,editorInitialized:false};
+const state = {bootstrap:null,module:null,session:null,selected:null,tab:'outcome',busy:false,job:null,cancelRequested:false,comparison:null,memoryOffset:0,memoryRequest:0,jobTitle:'',observationLost:false,mode:'javascript',editorDirty:false,editorBoundSha:null,editorInitialized:false,originSelections:new Map()};
 const fmt = value => Number.isFinite(value) ? value.toLocaleString() : '—';
 const bytes = value => Number.isFinite(value) ? value >= 1048576 ? `${(value/1048576).toFixed(2)} MiB` : `${fmt(value)} bytes` : '—';
 const json = value => JSON.stringify(value,null,2);
@@ -40,7 +40,7 @@ function useModule(module,{submittedSource=false}={}){
     if(typeof metadata.source==='string'){
       if(!state.editorDirty||(submittedSource&&$('script-source').value===metadata.source)){
         if(!state.editorDirty){$('script-source').value=metadata.source;$('script-name').value=module.name;}
-        state.editorBoundSha=metadata.sourceSha256;state.editorDirty=false;state.editorInitialized=true;
+        state.editorBoundSha=metadata.sourceSha256;state.editorDirty=false;state.editorInitialized=true;$('script-origin').checked=metadata.originTracing===true;
       }
     }
     if(!submittedSource&&!state.editorDirty&&state.session?.module.id===module.id)$('script-seed').value=state.session.settings.args[0];
@@ -59,14 +59,15 @@ function renderEditorBinding(){
   const source=$('script-source').value,length=new TextEncoder().encode(source).length,box=$('script-binding');
   box.classList.toggle('edited',state.editorDirty||length>1048575);
   if(length>1048575){box.textContent=`${fmt(length)} UTF-8 bytes. The source limit is 1,048,575 bytes. Shorten this script before capture.`;return;}
-  if(state.editorDirty){const treeHash=state.session?.module.script?.sourceSha256;box.textContent=`Local draft · ${fmt(length)} UTF-8 bytes. Load and capture to run these contents.${treeHash?` The existing tree still uses source SHA-256 ${treeHash}.`:''}`;return;}
-  if(state.editorBoundSha){const captured=state.session?.module.script?.sourceSha256===state.editorBoundSha;box.textContent=`${captured?'Current tree source':'Loaded source'} · ${fmt(length)} UTF-8 bytes · SHA-256 ${state.editorBoundSha}.${captured?' Editing does not change saved futures.':' Capture to create its first future.'}`;return;}
-  box.textContent=`Local editor · ${fmt(length)} UTF-8 bytes. Load an example or write a workflow, then capture the source shown here.`;
+  const originChoice=` Origin tracing for next capture: ${$('script-origin').checked?'on':'off'}.`;
+  if(state.editorDirty){const treeHash=state.session?.module.script?.sourceSha256;box.textContent=`Local draft · ${fmt(length)} UTF-8 bytes. Load and capture to run these contents.${treeHash?` The existing tree still uses source SHA-256 ${treeHash}.`:''}${originChoice}`;return;}
+  if(state.editorBoundSha){const captured=state.session?.module.script?.sourceSha256===state.editorBoundSha;box.textContent=`${captured?'Current tree source':'Loaded source'} · ${fmt(length)} UTF-8 bytes · SHA-256 ${state.editorBoundSha}.${captured?' Editing does not change saved futures.':' Capture to create its first future.'}${originChoice}`;return;}
+  box.textContent=`Local editor · ${fmt(length)} UTF-8 bytes. Load an example or write a workflow, then capture the source shown here.${originChoice}`;
 }
 async function loadScriptExample(policy){
   const result=await api(`/api/sequence-script-example?policy=${encodeURIComponent(policy)}`);
   if(typeof result.source!=='string'||typeof result.name!=='string')throw new Error('The runtime returned an incomplete JavaScript example.');
-  $('script-source').value=result.source;$('script-name').value=result.name;state.editorInitialized=true;state.editorDirty=true;state.editorBoundSha=null;setMode('javascript');renderEditorBinding();
+  $('script-source').value=result.source;$('script-name').value=result.name;state.editorInitialized=true;state.editorDirty=true;state.editorBoundSha=null;if(result.origin===true)$('script-origin').checked=true;setMode('javascript');renderEditorBinding();
 }
 async function captureScript(){
   const source=$('script-source').value,name=$('script-name').value.trim(),seed=integer($('script-seed').value,'Seed');
@@ -74,11 +75,11 @@ async function captureScript(){
   if(new TextEncoder().encode(source).length>1048575)throw new Error('JavaScript source exceeds the 1,048,575-byte UTF-8 limit.');
   if(!name||name.length>256)throw new Error('Use a source name between 1 and 256 characters.');
   progress('Loading the JavaScript source','Binding source bytes to a compatible guest engine…',0);
-  const loaded=await api('/api/sequence-script',{source,name});useModule(loaded.module||loaded,{submittedSource:true});
+  const origin=$('script-origin').checked;const loaded=await api('/api/sequence-script',{source,name,origin});useModule(loaded.module||loaded,{submittedSource:true});
   const result=await job({operation:'capture',moduleId:state.module.id,entry:'run',args:[seed]},'Capturing the first JavaScript decision');
   acceptSession(result);$('script-seed').value=seed;renderEditorBinding();
 }
-function updateControls(){const paused=isPaused(selected());for(const id of ['demo','upload','reopen','capture','policy','module-file','workspace-file','script-faulty','script-corrected','script-capture','script-source','script-name','script-seed'])$(id).disabled=state.busy;$('capture').disabled=state.busy||!state.module;$('advance').disabled=state.busy||!paused;$('search').disabled=state.busy||!paused;$('save').disabled=state.busy||!paused;$('compare').disabled=state.busy||!selected()||!$('compare-node').value;document.querySelectorAll('.tree-node,.presets button,[data-mode]').forEach(button=>button.disabled=state.busy);for(const id of ['response','label','alphabet','baseline','depth','budget','goal','argument','compare-node'])$(id).disabled=state.busy;$('cancel').disabled=!state.job||state.cancelRequested;$('job').hidden=!state.busy&&!state.job;}
+function updateControls(){const paused=isPaused(selected());for(const id of ['demo','upload','reopen','capture','policy','module-file','workspace-file','script-faulty','script-corrected','script-capture','script-source','script-name','script-seed','script-origin','script-origin-example'])$(id).disabled=state.busy;$('capture').disabled=state.busy||!state.module;$('advance').disabled=state.busy||!paused;$('search').disabled=state.busy||!paused;$('save').disabled=state.busy||!paused;$('compare').disabled=state.busy||!selected()||!$('compare-node').value;document.querySelectorAll('.tree-node,.presets button,[data-mode]').forEach(button=>button.disabled=state.busy);for(const id of ['response','label','alphabet','baseline','depth','budget','goal','argument','compare-node'])$(id).disabled=state.busy;$('cancel').disabled=!state.job||state.cancelRequested;$('job').hidden=!state.busy&&!state.job;}
 function progress(title,stage,elapsed){$('job-title').textContent=title;$('job-stage').textContent=stage||'Executing in a bounded local worker…';$('job-time').textContent=Number.isFinite(elapsed)?`${(elapsed/1000).toFixed(1)}s`:'';}
 function ensureObserveButton(){let button=$('observe');if(!button){button=el('button','button outline','Reconnect');button.id='observe';button.type='button';button.addEventListener('click',()=>act(async()=>{const result=await observeJob();acceptSession(result);},true));$('job').append(button);}button.hidden=!state.observationLost;}
 async function observeJob(){let consecutiveFailures=0;while(state.job){let current;try{current=await api(`/api/jobs/${encodeURIComponent(state.job)}`);consecutiveFailures=0;state.observationLost=false;ensureObserveButton();}catch(error){consecutiveFailures++;if(consecutiveFailures>=3){state.observationLost=true;ensureObserveButton();progress(state.jobTitle,'Connection lost. The job may still be running. Reconnect to read its authoritative status; cancel remains available.');error.activeJob=true;throw error;}await wait(700);continue;}progress(state.jobTitle,current.stage,current.elapsedMs);if(current.state==='done'){state.job=null;$('cancel').disabled=true;return current.result;}if(current.state==='error'||current.state==='cancelled'){state.job=null;$('cancel').disabled=true;if(state.session){try{const recovered=await api(`/api/sequences/${encodeURIComponent(state.session.sessionId)}`);acceptSession(recovered);}catch{/* Existing displayed results remain available if recovery is temporarily unavailable. */}}throw new Error(current.state==='cancelled'?'Operation cancelled. Completed nodes and captured cuts are preserved.':typeof current.error==='string'?current.error:current.error?.message||'The guest worker failed.');}if(current.state!=='running'&&current.state!=='queued')throw Object.assign(new Error('The runtime returned an unknown job state. Reconnect or cancel before starting another operation.'),{activeJob:true});await wait(280);}throw new Error('No live job to observe.');}
@@ -97,7 +98,7 @@ function renderSearch(){const report=state.session.searchReport,box=$('search-re
 function metric(label,value){const node=el('div','metric');node.append(el('span','',label),el('strong','',value));return node;}
 function showChecks(box,checks){const list=el('div','checks');for(const [name,value]of Object.entries(checks||{})){list.append(el('span',`check${value?'':' failed'}`,`${value?'✓':'!'} ${checkNames[name]||name}`));}if(list.childNodes.length)box.append(list);}
 function table(rows){const wrap=el('div','table-wrap');if(!Array.isArray(rows)){wrap.append(el('pre','json',json(rows)));return wrap;}if(!rows.length){wrap.append(el('p','micro','No rows.'));return wrap;}const normalized=rows.map(row=>row!==null&&typeof row==='object'&&!Array.isArray(row)?row:{value:row});const keys=[...new Set(normalized.flatMap(row=>Object.keys(row)))];const tab=el('table'),head=el('thead'),headRow=el('tr');for(const key of keys){const cell=el('th','',key);cell.scope='col';headRow.append(cell);}head.append(headRow);const body=el('tbody');for(const row of normalized){const tr=el('tr');for(const key of keys){const value=row[key];tr.append(el('td','',value===undefined?'—':value!==null&&typeof value==='object'?JSON.stringify(value):value));}body.append(tr);}tab.append(head,body);wrap.append(tab);return wrap;}
-function renderEvidence(){const node=selected(),box=$('evidence');if(!node)return;box.replaceChildren();box.setAttribute('aria-labelledby',`tab-${state.tab}`);for(const button of document.querySelectorAll('[data-tab]')){const active=button.dataset.tab===state.tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}$('inspect-title').textContent=state.comparison?'Compare two actual moments':pendingName(node);$('inspect-path').textContent=`${state.comparison?'LEFT · ':''}Resolved responses: ${pathText(node)} · depth ${node.depth}`;if(state.comparison)box.append(el('p','comparison-note',`RIGHT · ${pathText(state.session.nodes.find(item=>item.nodeId===state.comparison.rightId))}`));if(state.tab==='outcome')renderOutcome(box,node);if(state.tab==='trace')renderTrace(box,node);if(state.tab==='state')renderState(box,node);if(state.tab==='memory')renderMemory(box,node);}
+function renderEvidence(){const node=selected(),box=$('evidence');if(!node)return;box.replaceChildren();box.setAttribute('aria-labelledby',`tab-${state.tab}`);for(const button of document.querySelectorAll('[data-tab]')){const active=button.dataset.tab===state.tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}$('inspect-title').textContent=state.comparison?'Compare two actual moments':pendingName(node);$('inspect-path').textContent=`${state.comparison?'LEFT · ':''}Resolved responses: ${pathText(node)} · depth ${node.depth}`;if(state.comparison)box.append(el('p','comparison-note',`RIGHT · ${pathText(state.session.nodes.find(item=>item.nodeId===state.comparison.rightId))}`));if(state.tab==='outcome')renderOutcome(box,node);if(state.tab==='origin')renderOrigin(box,node);if(state.tab==='trace')renderTrace(box,node);if(state.tab==='state')renderState(box,node);if(state.tab==='memory')renderMemory(box,node);}
 function renderOutcome(box,node){if(state.comparison){const right=state.session.nodes.find(item=>item.nodeId===state.comparison.rightId);const metrics=el('div','metrics');metrics.append(metric('Left return',node.summary?.returnI32??'pending'),metric('Right return',right.summary?.returnI32??'pending'),metric('Different memory bytes',fmt(state.comparison.data?.changedBytes??state.comparison.data?.diff?.changedBytes)));box.append(metrics);for(const [label,item]of [['Left',node],['Right',right]]){box.append(el('h3','',`${label} · ${pendingName(item)}`));renderRows(box,item);}return;}const banner=el('div',`result-banner${isBroken(node)?' broken':''}`);banner.append(el('strong','',pendingName(node)));banner.append(el('p','',isPaused(node)?node.summary?.importReexecutedPrefix?`This saved cut was reopened by independently reconstructing its earlier execution and ${node.summary.importReexecutedDecisions??node.path?.length??0} resolved decisions once. New branches resume the validated live state.`:scriptReport(node)?'This JavaScript decision is paused inside the guest engine. Its live frames, heap, and pending promise state are available to branch.':'This is a saved live continuation. Its transaction, memory, and suspended call stack are still available to branch.':state.session.isBundledExample?isBroken(node)?'The actual SQLite rows show dispatch without a payment receipt. The invariant returned 1.':'This ending returned 0: the shipped-without-receipt rule was not violated. Inspect the SQL rows below.':scriptReport(node)?`The JavaScript workflow finished with resultI32 ${node.summary?.returnI32??node.report.resultI32??'—'}. Inspect its actual emitted output below.`:`The guest finished and returned ${node.summary?.returnI32??'—'}. This custom module has no example-specific SQL decoder.`));box.append(banner);const metrics=el('div','metrics');metrics.append(metric('Guest memory',bytes(node.summary?.memoryBytes)),metric(isPaused(node)?'Suspended stack':'Resolved decisions',isPaused(node)?bytes(node.summary?.continuationBytes):fmt(node.summary?.decisionCount??node.path?.length)),metric('Actual return',node.summary?.returnI32??'pending'));box.append(metrics);showChecks(box,node.summary?.checks);renderRows(box,node);}
 function renderRows(box,node){if(scriptReport(node)){renderScriptReport(box,node);return;}if(node?.report){for(const [name,rows]of Object.entries(node.report.rows||{})){box.append(el('h3','',`SQLite · ${name}`),table(rows));}const fields=Object.fromEntries(Object.entries(node.report).filter(([key])=>key!=='rows'));box.append(el('h3','','Workflow report'),el('pre','json',json(fields)));}else{box.append(el('p','micro','No SQL report is attached to this node. Generic modules expose their actual return value, callback trace, globals, and memory.'));}}
 function renderScriptReport(box,node){
@@ -112,6 +113,87 @@ function renderScriptReport(box,node){
   const metrics=el('div','metrics');metrics.append(metric('Guest entries',fmt(report.entryCount)),metric('Allocated JS bytes',bytes(report.allocatedBytes)),metric('Peak allocation',bytes(report.peakAllocatedBytes)));box.append(metrics);
   box.append(el('p','micro',`Execution status: ${report.status}. Instruction interrupt checks: ${fmt(report.instructionInterrupts)}.`));
   if(state.session.module.script){const metadata=state.session.module.script;box.append(el('h3','','Bound source'));identity(box,'Source SHA-256',metadata.sourceSha256);identity(box,'Source size',bytes(metadata.sourceBytes));identity(box,'Engine template SHA-256',metadata.templateSha256);}
+}
+function boundOriginFrame(metadata,origin,frame){
+  if(frame?.sourceBound!==true)return {mapped:false,reason:frame?.filename==='<input>'?'Dynamic code is not the captured source.':'No captured-source binding for this frame.'};
+  if(!metadata||typeof metadata.source!=='string'||metadata.source.length>1048575)return {mapped:false,reason:'Captured source is unavailable or exceeds its limit.'};
+  if(typeof origin?.sourceSha256!=='string'||!/^([a-f0-9]{64})$/.test(origin.sourceSha256)||origin.sourceSha256!==metadata.sourceSha256)return {mapped:false,reason:'Origin and captured source digests do not match.'};
+  if(typeof origin.templateSha256!=='string'||!/^([a-f0-9]{64})$/.test(origin.templateSha256)||origin.templateSha256!==metadata.templateSha256)return {mapped:false,reason:'Origin and captured interpreter identities do not match.'};
+  if(frame.filename!=='script.js'||!Number.isSafeInteger(frame.line)||frame.line<1||frame.line>metadata.source.length+1)return {mapped:false,reason:'Interpreter coordinates cannot map to this captured source.'};
+  return {mapped:true};
+}
+// Scan the bounded source without constructing an array for every source line.
+function originExcerpt(source,targetLine){
+  if(typeof source!=='string'||source.length>1048575||!Number.isSafeInteger(targetLine)||targetLine<1)return [];
+  const first=Math.max(1,targetLine-5),last=targetLine+5,rows=[];let line=1,start=0,matched=false;
+  const breaks=/\r\n|[\r\n\u2028\u2029]/g;
+  while(line<=last){
+    const next=breaks.exec(source),end=next?next.index:source.length;
+    if(line>=first){const fullLength=end-start,text=source.slice(start,Math.min(end,start+3000));rows.push({line,text,clipped:fullLength>3000,selected:line===targetLine});if(line===targetLine)matched=true;}
+    if(!next)break;start=breaks.lastIndex;line++;
+  }
+  return matched?rows:[];
+}
+function renderOrigin(box,node){
+  box.append(el('p','micro origin-scope','Callers recorded at the decision, mapped to saved source. Full asynchronous history and data flow are outside this view.'));
+  if(state.comparison){
+    const pair=el('div','origin-comparison');
+    renderOriginNode(pair,node,'Left moment');
+    renderOriginNode(pair,state.session.nodes.find(item=>item.nodeId===state.comparison.rightId),'Right moment');
+    box.append(pair);
+  }else renderOriginNode(box,node,'Selected moment');
+}
+function renderOriginNode(box,node,side){
+  const card=el('section','origin-card'),metadata=state.session.module.script,report=scriptReport(node),origin=report?.origin;
+  card.append(el('p','origin-side',`${side} · responses ${pathText(node)}`));
+  if(!report){card.append(el('h3','','No JavaScript caller context'),el('p','micro','This node has no JavaScript decision report. Its actual callback trace, state, and memory remain available in the other evidence tabs.'));box.append(card);return;}
+  if(!origin){const enabled=metadata?.originTracing===true;card.append(el('h3','',enabled?'Origin report unavailable':'Origin tracing was off'),el('p','micro',enabled?'Tracing was enabled for this module, but this node has no Origin report. No caller frames have been inferred.':'This captured module has no Origin report. Enable “Capture decision callers” and create a new capture to record callers. Changing the editor option does not alter existing saved cuts.'));box.append(card);return;}
+  const historical=origin.lastDecision===true||!isPaused(node),ordinal=Number.isSafeInteger(origin.pendingOrdinal)?origin.pendingOrdinal:null;
+  const hasDecision=origin.context!=='none'&&ordinal!==null;
+  const status=['captured','unavailable','truncated'].includes(origin.state)?origin.state:'unavailable';
+  card.append(el('h3','',!hasDecision?'No retained decision origin':historical?`Last captured decision ${ordinal}`:`Captured decision ${ordinal}`));
+  card.append(el('p','origin-context',!hasDecision?'No named-decision caller context is stored in this node.':historical?'Historical callers from the last recorded decision. This workflow has finished; these frames are not currently active callers.':status==='unavailable'?'The workflow reached this saved decision, but caller metadata was unavailable.':'Callers recorded at this saved decision, before its response was supplied.'));
+  card.append(el('span',`origin-status ${status}`,status==='captured'?'CALLERS CAPTURED':status==='truncated'?'TRACE TRUNCATED':'ORIGIN UNAVAILABLE'));
+  if(status==='truncated')card.append(el('p','micro','The bounded trace was clipped. Only complete decoded source-bound frames can navigate the captured source.'));
+  if(status==='unavailable')card.append(el('p','micro',typeof origin.reason==='string'?origin.reason:origin.pendingOrdinal===null?'No named-decision origin is retained for this raw effect.':'Caller metadata was unavailable at this moment. The guest could still reach its decision without a usable origin trace.'));
+  const frames=Array.isArray(origin.frames)?origin.frames.slice(0,64):[],list=el('ol','origin-frames'),excerpt=el('div','origin-source-pane');
+  excerpt.id=`origin-source-${node.nodeId}`;excerpt.setAttribute('aria-live','polite');
+  const firstMapped=frames.findIndex(frame=>boundOriginFrame(metadata,origin,frame).mapped),stored=state.originSelections.get(node.nodeId);
+  let active=Number.isSafeInteger(stored)&&boundOriginFrame(metadata,origin,frames[stored]).mapped?stored:firstMapped;
+  const buttons=[];
+  function selectFrame(index,focus=false){
+    active=index;state.originSelections.set(node.nodeId,index);
+    for(const item of buttons)item.button.setAttribute('aria-pressed',String(item.index===index));
+    excerpt.replaceChildren();const frame=frames[index],mapping=boundOriginFrame(metadata,origin,frame);
+    if(!mapping.mapped){excerpt.append(el('p','micro',mapping.reason));return;}
+    const rows=originExcerpt(metadata.source,frame.line);
+    excerpt.append(el('p','origin-source-heading',`${state.session.module.name} · captured source · line ${frame.line}${Number.isSafeInteger(frame.column)?`, interpreter column ${frame.column}`:''}`));
+    if(!rows.length){excerpt.append(el('p','micro','The interpreter line is outside the captured source text. Raw origin evidence is retained below.'));return;}
+    const code=el('div','origin-source');
+    for(const row of rows){const line=el('div',`origin-source-line${row.selected?' selected':''}`);line.append(el('span','origin-line-number',row.line),el('code','origin-source-code',row.text+(row.clipped?' … [line shortened]':'')));if(row.selected)line.setAttribute('aria-current','location');code.append(line);}
+    excerpt.append(code,el('p','micro','This excerpt uses the captured module source, never the editor draft.'));
+    if(focus)excerpt.querySelector('.origin-source')?.scrollIntoView({block:'nearest',inline:'nearest'});
+  }
+  for(const [index,frame]of frames.entries()){
+    const item=el('li'),mapping=boundOriginFrame(metadata,origin,frame),location=frame.filename?`${frame.filename}${Number.isSafeInteger(frame.line)?`:${frame.line}`:''}${Number.isSafeInteger(frame.column)?`:${frame.column}`:''}`:'No source location';
+    const label=typeof frame.functionName==='string'&&frame.functionName.length?frame.functionName:'Unnamed interpreter frame';
+    const row=el(mapping.mapped?'button':'div','origin-frame');
+    row.append(el('span','origin-frame-function',label),el('span','origin-frame-location',location));
+    if(mapping.mapped){row.type='button';row.setAttribute('aria-pressed',String(index===active));row.setAttribute('aria-controls',excerpt.id);row.setAttribute('aria-label',`View captured source: ${label}, ${location}`);row.addEventListener('click',()=>selectFrame(index,true));buttons.push({button:row,index});}
+    else{row.classList.add('unmapped');row.append(el('span','origin-frame-unmapped',mapping.reason));}
+    item.append(row);list.append(item);
+  }
+  if(frames.length){card.append(list);}
+  else card.append(el('p','micro','No complete caller frames were decoded. Any retained interpreter text appears below.'));
+  card.append(excerpt);if(active>=0)selectFrame(active);else excerpt.append(el('p','micro','No frame can navigate this captured source. Dynamic and native frames remain unmapped.'));
+  const limits=el('details','origin-limits');limits.append(el('summary','','Interpretation and limits'),el('p','micro','Names can be changed by guest code and may be escaped. They are interpreter labels, not proof of a particular source declaration.'),el('p','micro','Lines and columns are interpreter coordinates, not exact token positions. Caller context does not establish variable provenance, every cause of an outcome, or complete asynchronous ancestry.'));
+  if(metadata?.originWarning)limits.append(el('p','micro origin-warning',`Tracing caveat at capture time: ${metadata.originWarning}`));
+  card.append(limits);
+  const raw=el('details','origin-raw');raw.append(el('summary','','Raw interpreter backtrace'),el('pre','json',typeof origin.rawText==='string'&&origin.rawText.length?origin.rawText:'No raw backtrace text was retained.'));card.append(raw);
+  if(origin.sourceSha256)identity(card,'Origin source SHA-256',origin.sourceSha256);
+  if(metadata?.sourceSha256)identity(card,'Captured source SHA-256',metadata.sourceSha256);
+  if(origin.templateSha256)identity(card,'Origin interpreter SHA-256',origin.templateSha256);
+  box.append(card);
 }
 function renderTrace(box,node){const items=state.comparison?[['Left execution',node],['Right execution',state.session.nodes.find(item=>item.nodeId===state.comparison.rightId)]]:[['Selected execution',node]];for(const [label,item]of items){const group=el('div','trace-group');group.append(el('h3','',label));const summary=item?.summary||{};for(const [kind,events]of [['Earlier callbacks',summary.prefix],['Resolved decisions',summary.decisions],['Later callbacks',summary.suffix]]){group.append(el('p','micro',kind));if(Array.isArray(events)&&events.length)for(const [i,event]of events.entries())group.append(el('div','trace-line',`${i+1}. ${typeof event==='object'?JSON.stringify(event):event}`));else group.append(el('p','micro','No events recorded here.'));}if(isPaused(item))group.append(el('p','trace-line',`Pending: env.pending_effect(${(summary.pending||[]).join(', ')})`));box.append(group);}}
 function identity(box,label,value){const row=el('div','identity');row.append(el('span','',label),el('code','',typeof value==='object'?json(value):value??'—'));box.append(row);}
@@ -130,6 +212,8 @@ for(const button of document.querySelectorAll('[data-mode]')){
 }
 $('script-faulty').addEventListener('click',()=>act(()=>loadScriptExample('faulty')));
 $('script-corrected').addEventListener('click',()=>act(()=>loadScriptExample('corrected')));
+$('script-origin-example').addEventListener('click',()=>act(()=>loadScriptExample('origin')));
+$('script-origin').addEventListener('change',()=>{state.editorDirty=true;state.editorInitialized=true;renderEditorBinding();});
 $('script-form').addEventListener('submit',event=>{event.preventDefault();act(captureScript);});
 $('script-source').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();if(!state.busy)$('script-form').requestSubmit();}});
 for(const id of ['script-source','script-name','script-seed'])$(id).addEventListener('input',()=>{state.editorDirty=true;state.editorInitialized=true;renderEditorBinding();});

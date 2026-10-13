@@ -47,6 +47,28 @@ The rebuild writes `build/quickjs-template.raw.wasm` and a static-data manifest.
 
 The shipped template and manifest are pinned by `lib/script-fixture.mjs`. Rebuilds should compare their hashes before substituting them. Intentional bridge/compiler changes require updating the explicit identities, manifest and continuation/control evidence, rather than trusting a filename.
 
+## Optional Origin engine
+
+The default template remains the original engine. `--origin` selects a separate
+prebuilt interpreter that captures native caller context at named decisions.
+Try `origin-example.js` or Studio's **Load Origin example**. The example models
+an unpaid shipment after two payment timeouts; replies remain local values.
+See [Origin](../../docs/origin.md) for its portable continuation and source view.
+
+Rebuild the separate variant with:
+
+```sh
+WASI_SDK_PATH=/absolute/path/to/wasi-sdk-34 ./examples/javascript/build-origin.sh
+```
+
+`prepare-origin.mjs` verifies pristine source bytes, then creates separate build
+copies. The QuickJS copy escapes guest-controlled function names in backtrace
+text; the dtoa copy uses the existing unused-header compatibility change.
+`origin-template-manifest.json` retains exact before/after text and hashes,
+bridge identity and the bounded trace layout. Pristine vendor files and the
+original template remain unchanged. Capturing metadata allocates; it is opt-in,
+may affect quota behavior, and is not causal data flow or full async ancestry.
+
 [QuickJS](https://bellard.org/quickjs/quickjs.html) provides the interpreter and C APIs. [Quickjs-emscripten](https://github.com/justjake/quickjs-emscripten#asyncify) already suspends interpreter execution through Asyncify. Forkwake's integration branches independent live interpreter continuations across repeated owned decisions and searches their actual futures. It does not claim the first interpreter suspension or arbitrary application cloning.
 
 The ending `resultI32` must be an own data property of the guest global object. Getters, setters, inherited values and missing values are rejected. Reading an ending never runs extra guest code after Promise jobs finish.

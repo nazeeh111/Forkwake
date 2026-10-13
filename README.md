@@ -48,6 +48,30 @@ node cli.mjs explore --script ./examples/javascript/workflow.js \
 
 Source is bound to the exact prebuilt interpreter and its own SHA-256, including portable cuts. Script loading patches one bounded data slot and executes no guest code. Source must be valid UTF-8, at most 1,048,575 bytes, with no NUL. Decision labels admit 96 UTF-8 bytes and JSON payloads 4,096. The latest output admits 16,383 UTF-8 bytes. The allocator enforces 4 MiB of requested QuickJS allocation bytes, separately from the guest's 32 MiB physical memory maximum and terminating worker deadlines. Clock values and the initial random state are deterministic. External effects are explicit modeled decisions, not live remote calls. [JavaScript contract and rebuild](examples/javascript/README.md) and [CLI details](docs/javascript-cli.md) explain errors and limits.
 
+## Origin: connect a decision to its callers
+
+Enable **Origin** before capture, or choose **Load Origin example** in the
+JavaScript editor. Select a saved decision and open the **Origin** evidence tab:
+inspect its actual interpreter callers and click a mapped frame to see the
+captured source. Compare two futures without losing an edited source draft.
+
+The checkout example makes the need concrete: two payment timeouts reach a
+dispatch path that should have required payment. The inspector shows the callers
+at that pending dispatch; continuing produces the actual unpaid-shipment result.
+Negative seed selects the corrected rule.
+
+```sh
+node cli.mjs capture --script examples/javascript/origin-example.js --origin --out checkout-cut
+node cli.mjs continue --workspace checkout-cut/workspace.forkwake --responses 1,-1,-1 --out dispatch-cut
+```
+
+Origin is opt-in. The default keeps the exact original interpreter. Trace records
+bind the executed source and engine, retain unavailable/truncated states and
+escape guest-controlled names. Finished nodes show the last captured context.
+Dynamic code stays unmapped. Metadata can consume extra guest memory and affect
+quota/GC behavior; caller stacks do not establish causal data flow or full async
+ancestry. [Origin contract and portable walkthrough](docs/origin.md).
+
 ## Search and continue outside the browser
 
 ```sh
@@ -116,6 +140,13 @@ npm test
 ```
 
 Tests compare resumed compiled C and SQLite executions with uninterrupted original-module controls, including both repeated controls and sibling isolation. SQLite comparisons include every exported result word and actual JSON query rows. All24 terminal fulfillment paths are compared with original-module controls. Independent sequence probes cover repeated identical effects, variable path lengths, 32 decisions and rejection of a33rd, deep imports and worker loops. Search checks distinguish proven finite minima, complete no-match enumeration and unresolved budgets/errors. The suite also checks exact i64 global restoration, memory growth, nested frames, sealed prefix callbacks, portable import revalidation, forged cuts/caches, side-effecting storage accessors, unsupported modules, HTTP write boundaries and cancellation. CLI tests exercise packaged workflows and reject invalid input and overwrite attempts.
+
+Origin tests compare closure and Promise caller lines with V8, preserve origins
+across sibling forks and portable import, and check hostile display names,
+getter avoidance, unbound dynamic code, clipping, quota pressure and corrupt
+metadata. The unchanged default template is checked separately. The checkout
+demo matched 24 distinct finite response paths across untraced QuickJS, Origin
+QuickJS and V8; its corrected policy had no unpaid shipment in that set.
 
 The saved SQLite frame is 484 bytes; the complete captured memory is 4 MiB. The fixture separately reports actual SQLite allocation and a 64 KiB allocated canary. These are different measures. Restoration checks and these controls are runtime evidence on the shipped cases, not a proof of every possible Asyncify transformation or application equivalence.
 
