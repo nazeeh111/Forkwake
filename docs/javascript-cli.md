@@ -34,3 +34,11 @@ This example finds `[1,-1]`, a one-choice change from `[1,1]`. `search.json` rec
 `--script` and `--module` are mutually exclusive. The existing default SQLite example and `--module` workflow keep their input default of `4`. JavaScript source must be valid UTF-8, at most 1 MiB, and satisfy the source loader's validation. Existing output directories are refused. Private directory/file modes, bounded workers, interrupt cancellation, retained-memory limits and private in-memory snapshot keys apply to script workflows too. Workspaces contain source and actual guest memory; protect them when that data is private.
 
 The ending `resultI32` must be an own data property of the guest global object. Getters, setters, inherited values and missing values are rejected. Reading an ending never runs extra guest code after Promise jobs finish.
+
+Add `--origin` to a script capture or search to record the interpreter's active
+callers at each named decision. Studio offers the same explicit opt-in. Existing
+commands keep the original engine. Portable cuts retain the selected engine and
+source, so continuation needs no tracing flag or original source file. Origin
+allocates temporary metadata and may affect garbage collection or quota behavior;
+it can be unavailable or truncated. See [Origin](origin.md) for the runnable
+checkout example, bound source navigation and limits on asynchronous ancestry.

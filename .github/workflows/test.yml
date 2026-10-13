@@ -28,14 +28,19 @@ jobs:
       - name: Install the actual package and execute SQLite branches
         shell: bash
         run: |
+          set -e
           npm pack --pack-destination "$RUNNER_TEMP"
           mkdir "$RUNNER_TEMP/installed-forkwake"
           cd "$RUNNER_TEMP/installed-forkwake"
           npm init -y
-          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/forkwake-0.3.0.tgz"
+          npm install --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/forkwake-0.4.0.tgz"
           ./node_modules/.bin/forkwake demo --out "$RUNNER_TEMP/sqlite-futures"
           node "$GITHUB_WORKSPACE/scripts/check-demo.mjs" "$RUNNER_TEMP/sqlite-futures/outcomes.json"
           ./node_modules/.bin/forkwake explore --input 4 --goal 1 --out "$RUNNER_TEMP/sqlite-search"
           node "$GITHUB_WORKSPACE/scripts/check-search.mjs" "$RUNNER_TEMP/sqlite-search/search.json"
           ./node_modules/.bin/forkwake explore --script ./node_modules/forkwake/examples/javascript/workflow.js --goal 1 --out "$RUNNER_TEMP/javascript-search"
           node "$GITHUB_WORKSPACE/scripts/check-javascript.mjs" "$RUNNER_TEMP/javascript-search/search.json"
+          ./node_modules/.bin/forkwake capture --script ./node_modules/forkwake/examples/javascript/origin-example.js --origin --out "$RUNNER_TEMP/origin-cut"
+          ./node_modules/.bin/forkwake continue --workspace "$RUNNER_TEMP/origin-cut/workspace.forkwake" --responses 1,-1,-1 --out "$RUNNER_TEMP/origin-dispatch"
+          ./node_modules/.bin/forkwake continue --workspace "$RUNNER_TEMP/origin-dispatch/workspace.forkwake" --responses 1 --out "$RUNNER_TEMP/origin-ending"
+          node "$GITHUB_WORKSPACE/scripts/check-origin.mjs" "$RUNNER_TEMP/origin-dispatch/outcomes.json" "$RUNNER_TEMP/origin-ending/outcomes.json"

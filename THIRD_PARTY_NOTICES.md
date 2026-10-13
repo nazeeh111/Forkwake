@@ -11,3 +11,10 @@ Full pinned upstream license texts and component notices are included under `exa
 The JavaScript guest embeds unchanged MIT-licensed QuickJS2026-06-04 source files under `examples/javascript/vendor/quickjs-2026-06-04/`, with the full upstream LICENSE and each original source notice retained. Its downloaded archive identity and per-file SHA256 values are in `examples/javascript/source-manifest.json`. The build generates a separate dtoa.c copy with one unused header compatibility change; pristine upstream bytes remain unchanged. Its statically linked WASI SDK34 runtime uses the same full source/runtime provenance and license texts retained above. The prebuilt interpreter needs no compiler at use time.
 
 QuickJS's API and interpreter are upstream work: https://bellard.org/quickjs/quickjs.html. Existing quickjs-emscripten already uses Asyncify to suspend interpreter execution: https://github.com/justjake/quickjs-emscripten#asyncify. Forkwake claims neither authorship of QuickJS nor invention of interpreter suspension. The owned bridge, bounded source injection, continuation siblings, named-decision reports and integration are separately implemented here.
+
+The optional Origin interpreter builds a separate QuickJS compatibility copy
+that escapes guest-controlled function names when formatting backtraces. Exact
+patch text, pristine and generated source hashes, original bridge identity and
+trace layout are retained in `examples/javascript/origin-template-manifest.json`.
+`prepare-origin.mjs` generates the copies; upstream notices and full MIT license
+remain intact. The original interpreter and pristine vendor bytes are unchanged.
