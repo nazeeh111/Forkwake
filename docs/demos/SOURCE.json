@@ -1,0 +1,83 @@
+{
+  "base_public_head": "1c3583635057b2d1498c839f2e85d88c2b2fac61",
+  "input_source_sha256": "b276de951b44f3f73762d718f37f1820ec97d106f4a29f437269fa42f225229e",
+  "origin_engine_sha256": "a6bf4fb95d8ecfb656e6d5b6631e4d8fa015341cb5e728e45c456948a070930d",
+  "capture": "Chrome actual UI;1440x1000 and390x844;authored closed checkout;held frames,not realtime",
+  "files": [
+    {
+      "path": "examples/javascript/origin-example.js",
+      "bytes": 1449,
+      "sha256": "b276de951b44f3f73762d718f37f1820ec97d106f4a29f437269fa42f225229e"
+    },
+    {
+      "path": "web/futures.js",
+      "bytes": 53000,
+      "sha256": "4e418f1ca9cb4b5cdaeb9c57e9b4e59f03470eb1094aa0a4f3a86f538b07f08c"
+    },
+    {
+      "path": "web/futures.html",
+      "bytes": 12206,
+      "sha256": "b060b5b53807897242b61bf9fe028f4015edfc430c6e2bc3c375912cd8c5f041"
+    },
+    {
+      "path": "web/futures.css",
+      "bytes": 36429,
+      "sha256": "8cb4186bada7923e1c2aa6f44980fddcaf07fe56e094b8cec951acad55eb6003"
+    },
+    {
+      "path": "web/index.html",
+      "bytes": 8537,
+      "sha256": "e4b4c5bf8586d4ebe636aae580621fbaaca16bc8501be29ccb75299defbf1d02"
+    },
+    {
+      "path": "web/style.css",
+      "bytes": 19834,
+      "sha256": "76147db56332ea25510d373860667df6918fceb55143129a520f791ec5e5460f"
+    },
+    {
+      "path": "scripts/build-presentation.py",
+      "bytes": 1501,
+      "sha256": "6e92edfef74cb47b887e1023e958d1b64d673cadb73381221a88952c82eca099"
+    },
+    {
+      "path": "docs/futures-walkthrough.gif",
+      "bytes": 764831,
+      "sha256": "06158da4bca89759f90d467e28409c524284b122f2f114d6c61f315a61e7913d"
+    },
+    {
+      "path": "docs/futures-workbench.jpg",
+      "bytes": 171812,
+      "sha256": "40f26f030404274b874157026f33b46c7fee2d6c8be814bf4165f54d8ce8400b"
+    },
+    {
+      "path": "docs/futures-mobile.jpg",
+      "bytes": 47999,
+      "sha256": "7c8b1f02625e255a128af74b8032765bebced516871591dbc1ddc3d0811eb59c"
+    },
+    {
+      "path": "docs/futures-mobile-tree.jpg",
+      "bytes": 47999,
+      "sha256": "7c8b1f02625e255a128af74b8032765bebced516871591dbc1ddc3d0811eb59c"
+    },
+    {
+      "path": "docs/demos/frames/origin.jpg",
+      "bytes": 138660,
+      "sha256": "13d8b349834545df6e08b4d44097c8fc49dbdbfa0a9edf54d58b0031a4875039"
+    },
+    {
+      "path": "docs/demos/frames/tree.jpg",
+      "bytes": 171812,
+      "sha256": "40f26f030404274b874157026f33b46c7fee2d6c8be814bf4165f54d8ce8400b"
+    },
+    {
+      "path": "docs/demos/frames/outcome.jpg",
+      "bytes": 157135,
+      "sha256": "ca798961450d6a3ac3e0d225b93efa4c75da1dba5b09403a0c9338f80a1714ab"
+    },
+    {
+      "path": "examples/javascript/origin-template.raw.wasm",
+      "bytes": 2319402,
+      "sha256": "a6bf4fb95d8ecfb656e6d5b6631e4d8fa015341cb5e728e45c456948a070930d"
+    }
+  ]
+}
