@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#eceee7">
+  <meta name="theme-color" content="#2458da">
   <title>Forkwake · One execution, multiple futures</title>
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -16,13 +16,13 @@
   </header>
   <main>
     <section class="intro">
-      <div><div class="eyebrow">EXECUTION, AT A CROSSROADS</div><h1>Keep the past.<br><span>Change what happens next.</span></h1></div>
+      <div><div class="eyebrow">SINGLE-CUT EXECUTION</div><h1>Pause once.<br><span>Compare the continuations.</span></h1></div>
       <p>Pause a running program at one pending event. Save its live state. Give independent continuations different answers and inspect what actually changes.</p>
     </section>
     <div id="notice" class="notice" role="alert" hidden></div>
     <div class="workspace">
       <aside class="setup panel">
-        <div class="section-label"><span class="step">01</span> Prepare the cut</div>
+        <div class="section-label">Prepare the cut</div>
         <h2>A real transaction.<br>Still open.</h2>
         <p class="subtle">The example runs compiled C and SQLite. It pauses at payment authorization, inside a transaction, with a prepared statement still active.</p>
         <button id="demo-button" class="button primary wide">Load SQLite example <span aria-hidden="true">↓</span></button>
@@ -38,7 +38,7 @@
         <details class="abi-details"><summary>What can I run?</summary><p>WebAssembly is a portable compiled program format. The ABI is the exact interface between the guest and this runtime. Forkwake supports one owned pending event and these imported callbacks:</p><p><code>env.pre_cut(i32, i32) → void</code><br><code>env.pending_effect(i32, i32, i32, i32) → i32</code><br><code>env.post_cut(i32, i32) → void</code></p><p>Required exports: <code>run(i32) → i32</code>, <code>memory</code>, <code>header_address() → i32</code>, and <code>asyncify_capacity() → i32</code>. Optional: <code>_initialize() → void</code>. Memory must be owned, unshared wasm32 with an explicit maximum no greater than 32 MiB. Continuation storage must be aligned and bounded.</p><p>The saved state includes guest memory, mutable globals, and the suspended call stack. It does not clone a native process, files, sockets, or external services.</p></details>
       </aside>
       <section class="stage panel" aria-labelledby="stage-title">
-        <div class="stage-top"><div class="section-label"><span class="step">02</span> Fork the future</div><span id="session-status" class="status-pill">NO CAPTURE YET</span></div>
+        <div class="stage-top"><div class="section-label">Fork the future</div><span id="session-status" class="status-pill">NO CAPTURE YET</span></div>
         <div id="empty-stage" class="empty-stage">
           <div class="empty-drawing" aria-hidden="true"><span class="empty-source"></span><span class="empty-track"></span><span class="empty-cut">?</span><span class="empty-fork one"></span><span class="empty-fork two"></span><span class="empty-end one"></span><span class="empty-end two"></span></div>
           <h2 id="stage-title">One saved moment.<br>More than one ending.</h2><p>Load the example or your own compatible module.<br>Capture its first pending event to begin.</p>
@@ -62,7 +62,7 @@
       </section>
     </div>
     <section class="inspector panel" id="inspector" hidden aria-labelledby="inspector-title">
-      <div class="inspector-heading"><div><div class="section-label"><span class="step">03</span> Inspect the evidence</div><h2 id="inspector-title">Captured state</h2></div><div class="compare-controls"><label>Compare <select id="compare-left" aria-label="First branch to compare"></select></label><span aria-hidden="true">↔</span><label><span class="sr-only">Second branch</span><select id="compare-right" aria-label="Second branch to compare"></select></label><button class="button ghost compact" id="compare-button" disabled>Compare</button></div></div>
+      <div class="inspector-heading"><div><div class="section-label">Inspect the evidence</div><h2 id="inspector-title">Captured state</h2></div><div class="compare-controls"><label>Compare <select id="compare-left" aria-label="First branch to compare"></select></label><span aria-hidden="true">↔</span><label><span class="sr-only">Second branch</span><select id="compare-right" aria-label="Second branch to compare"></select></label><button class="button ghost compact" id="compare-button" disabled>Compare</button></div></div>
       <nav class="tabs" aria-label="Evidence panels"><button data-tab="outcome" class="active" aria-pressed="true">Outcome</button><button data-tab="memory" aria-pressed="false">Memory</button><button data-tab="trace" aria-pressed="false">Execution trace</button><button data-tab="state" aria-pressed="false">State & integrity</button></nav>
       <div id="evidence-content" class="evidence-content"></div>
     </section>
