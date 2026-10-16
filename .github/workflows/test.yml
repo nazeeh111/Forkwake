@@ -44,9 +44,15 @@ jobs:
           ./node_modules/.bin/forkwake continue --workspace "$RUNNER_TEMP/origin-cut/workspace.forkwake" --responses 1,-1,-1 --out "$RUNNER_TEMP/origin-dispatch"
           ./node_modules/.bin/forkwake continue --workspace "$RUNNER_TEMP/origin-dispatch/workspace.forkwake" --responses 1 --out "$RUNNER_TEMP/origin-ending"
           node "$GITHUB_WORKSPACE/scripts/check-origin.mjs" "$RUNNER_TEMP/origin-dispatch/outcomes.json" "$RUNNER_TEMP/origin-ending/outcomes.json"
-          if FORKWAKE_RECIPE_POLICY=faulty FORKWAKE_RECIPE_OUT="$RUNNER_TEMP/timeout-faulty" node --test ./node_modules/forkwake/examples/javascript/regression/timeout-regression.test.mjs; then
-            echo "The deliberately faulty policy unexpectedly passed"
+          recipe="$PWD/node_modules/forkwake/examples/javascript/regression/timeout-regression.test.mjs"
+          test -f "$recipe"
+          test ! -e "$RUNNER_TEMP/timeout-faulty"
+          test ! -e "$RUNNER_TEMP/timeout-corrected"
+          red_status=0
+          FORKWAKE_RECIPE_POLICY=faulty FORKWAKE_RECIPE_OUT="$RUNNER_TEMP/timeout-faulty" node --test "$recipe" || red_status=$?
+          if [ "$red_status" -ne 1 ]; then
+            echo "Expected the faulty business rule to fail with exit 1, got $red_status"
             exit 1
           fi
-          node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const r=JSON.parse(fs.readFileSync(process.argv[1])); assert.equal(r.invariant.passed,false); assert.deepEqual(r.replies,[1,-1,-1,1]);' "$RUNNER_TEMP/timeout-faulty/regression-receipt.json"
-          FORKWAKE_RECIPE_OUT="$RUNNER_TEMP/timeout-corrected" node --test ./node_modules/forkwake/examples/javascript/regression/timeout-regression.test.mjs
+          node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const r=JSON.parse(fs.readFileSync(process.argv[1])); assert.equal(r.policy,"faulty"); assert.equal(r.invariant.passed,false); assert.deepEqual(r.replies,[1,-1,-1,1]); assert.equal(r.ledger.reserved,true); assert.equal(r.ledger.paid,false); assert.equal(r.ledger.dispatched,true);' "$RUNNER_TEMP/timeout-faulty/regression-receipt.json"
+          FORKWAKE_RECIPE_OUT="$RUNNER_TEMP/timeout-corrected" node --test "$recipe"
