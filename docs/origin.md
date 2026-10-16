@@ -31,6 +31,13 @@ The saved module carries the source and selected engine. Reopen does not require
 the original `.js` file or a compiler. It reconstructs the earlier responses once
 and verifies the actual cut before resealing, then resumes the saved continuation.
 
+## Turn the witness into a test
+
+The [timeout regression recipe](timeout-regression.md) runs the discovered
+`1,-1,-1,1` path as a failing `node:test` assertion, then runs the corrected
+policy with the same invariant. It retains actual CLI artifacts and source-bound
+callers for inspection.
+
 ## Explicit opt-in
 
 `--origin` works only with `--script`. Existing CLI commands and HTTP requests

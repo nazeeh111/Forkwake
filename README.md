@@ -64,7 +64,7 @@ node cli.mjs explore --script ./examples/javascript/workflow.js \
   --alphabet 1,0,-1 --baseline 1,1,1,1 --goal 1 --max-depth 4 --out ./transfer-search
 ```
 
-Output directories must be new. [JavaScript contract](examples/javascript/README.md) · [CLI guide](docs/javascript-cli.md) · [SQLite example](examples/fulfillment/README.md) · [Origin walkthrough](docs/origin.md)
+Output directories must be new. [JavaScript contract](examples/javascript/README.md) · [CLI guide](docs/javascript-cli.md) · [SQLite example](examples/fulfillment/README.md) · [Origin walkthrough](docs/origin.md) · [Timeout witness → regression test](docs/timeout-regression.md)
 
 ## Scope and verification
 
