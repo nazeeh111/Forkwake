@@ -16,6 +16,7 @@ function base64(value,max){if(typeof value!=='string'||value.length>Math.ceil(ma
 
 
 export async function createServer({port=6350,deadlineMs=30000,prepareDeadlineMs=90000}={}){
+  const {version}=JSON.parse(await fs.readFile(new URL('package.json',ROOT),'utf8'));
   const token=crypto.randomBytes(32).toString('hex'),snapshotKey=crypto.randomBytes(32).toString('hex');
   const modules=new Map(),sessions=new Map(),branches=new Map(),jobs=new Map();
   const sequences=await createSequenceService({snapshotKey,deadlineMs,prepareDeadlineMs,lookupModule:digest=>modules.get(digest)});
@@ -43,7 +44,7 @@ export async function createServer({port=6350,deadlineMs=30000,prepareDeadlineMs
     function send(value,status=200,type='application/json'){const data=type==='application/json'?Buffer.from(JSON.stringify(value)):value;res.writeHead(status,{'Content-Type':type,'Content-Length':data.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});res.end(data);}
     try{if(req.headers.host!==new URL(origin).host)return send({error:'Only the local workbench hostname is accepted.'},403);const url=new URL(req.url,origin),path=url.pathname;
       if(req.method==='GET'){
-        if(path==='/api/bootstrap')return send({token,version:'0.4.0',budgets:{preparationMs:prepareDeadlineMs,executionMs:deadlineMs},demo:{name:'SQLite: fork an active payment transaction',defaultInput:4,defaultResponses:[{label:'Approved',value:1},{label:'Declined',value:0},{label:'Timeout',value:-1}],description:'Pause inside SQLite’s executing SQL callback. Resume sibling instances with different authorization results.'}});
+        if(path==='/api/bootstrap')return send({token,version,budgets:{preparationMs:prepareDeadlineMs,executionMs:deadlineMs},demo:{name:'SQLite: fork an active payment transaction',defaultInput:4,defaultResponses:[{label:'Approved',value:1},{label:'Declined',value:0},{label:'Timeout',value:-1}],description:'Pause inside SQLite’s executing SQL callback. Resume sibling instances with different authorization results.'}});
         const sequenceValue=await sequences.get(path,url);if(sequenceValue!==undefined)return send(sequenceValue);
         if(path.startsWith('/api/jobs/')){const jobId=path.split('/').at(-1),sequenceJob=sequences.getJob(jobId);if(sequenceJob)return send(sequenceJob);const j=jobs.get(jobId);if(!j)return send({error:'Unknown job.'},404);return send({state:j.state,elapsedMs:Date.now()-j.started,stage:j.stage,result:j.result,error:j.error});}
         if(path.startsWith('/api/sessions/')){const s=sessions.get(path.split('/').at(-1));if(!s)throw Error('Unknown paused session.');return send(sessionInfo(s));}
