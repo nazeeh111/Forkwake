@@ -82,4 +82,4 @@ Tests compare forked C, SQLite and JavaScript cases with uninterrupted controls,
 
 [Binaryen Asyncify](https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html) supplies the stack transformation. Forkwake adds the closed runtime contract, authenticated portable cuts, restoration checks and inspection workflow. Original code is MIT; [third-party notices](THIRD_PARTY_NOTICES.md) cover Binaryen, QuickJS and SQLite.
 
-Useful contributions: a reproducible disagreement with an uninterrupted control, a compatible workload, or a concrete contract limitation. Built and tested with Codex.
+Useful contributions: a reproducible disagreement with an uninterrupted control, a compatible workload, or a concrete contract limitation.

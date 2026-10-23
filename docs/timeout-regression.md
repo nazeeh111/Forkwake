@@ -87,7 +87,7 @@ exercise a payment API, reproduce real network scheduling, or validate a
 production system. For broader bounded exploration, use the
 [search guide](javascript-cli.md) and read its unresolved-work counts.
 
-Written and verified with Codex. Node's official
+Node's official
 [test runner documentation](https://nodejs.org/docs/latest-v24.x/api/test.html)
 describes `node --test`; Forkwake's [Origin contract](origin.md) describes the
 captured callers and portable continuation used here.

@@ -174,6 +174,6 @@ Binaryen's [Asyncify](https://kripken.github.io/blog/wasm/2019/07/16/asyncify.ht
 
 Original code is MIT. SQLite source is unchanged public-domain code; Binaryen is Apache-2.0. Official source identities and build provenance are included. See [third-party notices](../THIRD_PARTY_NOTICES.md).
 
-Built and tested with Codex. Useful contributions include a public closed guest whose fork disagrees with an uninterrupted control, another reproducible workload, or a specific ABI limitation with a small compiling example. Do not upload proprietary programs or private memory dumps.
+Useful contributions include a public closed guest whose fork disagrees with an uninterrupted control, another reproducible workload, or a specific ABI limitation with a small compiling example. Do not upload proprietary programs or private memory dumps.
 
 The ending `resultI32` must be an own data property of the guest global object. Getters, setters, inherited values and missing values are rejected. Reading an ending never runs extra guest code after Promise jobs finish.
