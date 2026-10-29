@@ -82,6 +82,6 @@ Tests compare forked C, SQLite and JavaScript cases with uninterrupted controls,
 
 ## License and contributing
 
-Original code is MIT; [third-party notices](THIRD_PARTY_NOTICES.md) cover Binaryen, QuickJS and SQLite.
+Original code is MIT; component licenses remain beside the bundled files under `examples/`.
 
 Useful contributions: a reproducible disagreement with an uninterrupted control, a compatible workload, or a concrete contract limitation.

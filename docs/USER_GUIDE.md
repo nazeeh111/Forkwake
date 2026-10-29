@@ -172,7 +172,7 @@ The SQLite guest's file interface is an owned memory-only implementation. Extern
 
 Binaryen's [Asyncify](https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html) provides the established stack transformation. Forkwake adds the closed guest contract, authenticated portable cuts, actual sibling restoration, independent import checks and an inspection workflow around it. Execution forking and multiverse debugging have prior art; this project claims no first invention.
 
-Original code is MIT. SQLite source is unchanged public-domain code; Binaryen is Apache-2.0. Official source identities and build provenance are included. See [third-party notices](../THIRD_PARTY_NOTICES.md).
+Original code is MIT. SQLite source is unchanged public-domain code; Binaryen is Apache-2.0. Official source identities and build provenance are included. Full component licenses are retained under `examples/sqlite/licenses/` and `examples/javascript/vendor/quickjs-2026-06-04/LICENSE`.
 
 Useful contributions include a public closed guest whose fork disagrees with an uninterrupted control, another reproducible workload, or a specific ABI limitation with a small compiling example. Do not upload proprietary programs or private memory dumps.
 

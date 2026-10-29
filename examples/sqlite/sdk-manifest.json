@@ -132,16 +132,6 @@
       "fullUpstreamFile": true
     },
     {
-      "file": "licenses/MUSL-FTS-NOTICE.md",
-      "repository": "WebAssembly/wasi-libc",
-      "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
-      "sourcePath": "fts/musl-fts/NOTICE.wasi-libc.md",
-      "url": "https://raw.githubusercontent.com/WebAssembly/wasi-libc/2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13/fts/musl-fts/NOTICE.wasi-libc.md",
-      "bytes": 407,
-      "sha256": "6aa429513e3e883111aceab81f80f9da38613b7f74c966393ff33470c93a9daa",
-      "fullUpstreamFile": true
-    },
-    {
       "file": "licenses/COMPILER-RT-LICENSE.txt",
       "repository": "llvm/llvm-project",
       "commit": "895aa2c896ada719451be2e3673c83da8ddf1141",
@@ -162,7 +152,7 @@
       "fullUpstreamFile": true
     },
     {
-      "file": "licenses/DLMALLOC-NOTICE.txt",
+      "file": "licenses/DLMALLOC-LICENSE.txt",
       "repository": "WebAssembly/wasi-libc",
       "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
       "sourcePath": "dlmalloc/src/malloc.c",
@@ -174,7 +164,7 @@
       "extract": "Complete leading copyright/license notice, before technical documentation"
     },
     {
-      "file": "licenses/EMMALLOC-NOTICE.txt",
+      "file": "licenses/EMMALLOC-LICENSE.txt",
       "repository": "WebAssembly/wasi-libc",
       "commit": "2e6fb9d8ee0cdf9e431fbcabe8af3115de000a13",
       "sourcePath": "emmalloc/emmalloc.c",
