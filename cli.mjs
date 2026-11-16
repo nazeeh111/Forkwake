@@ -8,8 +8,9 @@ import {Worker} from 'node:worker_threads';
 import {reportFromMemory} from './lib/fixture.mjs';
 import {reportFulfillmentFromMemory} from './lib/fulfillment-fixture.mjs';
 import {executeJob} from './lib/jobs.mjs';
-import {searchFutures,searchSettings} from './lib/search.mjs';
-import {loadScriptModule,scriptReportFromMemory} from './lib/script-fixture.mjs';
+import {searchSettings} from './lib/search.mjs';
+import {searchWorkspace,encodeSearchWorkspace,checkSearchWorkspace,nodeFromResult} from './lib/search-workspace.mjs';
+import {loadScriptModule,scriptReportFromMemory,scriptModuleInfo} from './lib/script-fixture.mjs';
 
 const ROOT=new URL('./',import.meta.url),MODULE_BYTES=8*1024*1024,WORKSPACE_BYTES=64*1024*1024,MEMORY_BYTES=32*1024*1024;
 const DEADLINE_MS=30000,PREPARATION_DEADLINE_MS=90000,MAX_BRANCHES=12,POLICY='closed-wasm32-pure-accessors-v2';
@@ -17,7 +18,7 @@ const MAX_SEQUENCE=32,MAX_NODES=64,RETAINED_MEMORY_BYTES=128*1024*1024;
 const SCRIPT_BYTES=1024*1024;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const help=`Forkwake: branch live, owned WebAssembly continuations\n\nUsage:\n  forkwake serve [--port 6350]\n  forkwake demo --out <new directory> [--memory]\n  forkwake run --module <wasm> --input <signed i32> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n  forkwake resume --workspace <workspace.forkwake> --responses <comma-separated signed i32s> --out <new directory> [--memory]\n\nOutputs: workspace.forkwake and outcomes.json. --memory also writes actual final-memory binaries. Existing output directories are refused.\n\nThe guest ABI is run(i32)->i32, header_address()->i32, asyncify_capacity()->i32, an owned bounded wasm32 memory, and exact owned env effect imports. The original demo/run/resume operations support one pending cut; explore/continue support sequential effects. Native processes, files, network connections and threads are not cloned.\n\nPortable resume independently re-executes and validates the original prefix once. Its subsequent sibling branches resume the validated cut without replaying that prefix. Validation and transformation have a 90-second preparation deadline; guest execution has a separate 30-second deadline.\n`;
-const sequenceHelp=`\nSequential effects:\n  forkwake explore [--module <wasm>] [--input 4] [--alphabet 1,0,-1] [--baseline 1,1,1,1] [--goal 1] [--max-depth 4] [--max-jobs 128] --out <new directory>\n  forkwake continue --workspace <version-2 workspace.forkwake> --responses <comma-separated signed i32s> --out <new directory>\n\nExplore defaults to the compiled SQLite fulfillment example. Positive quantity selects its deliberately faulty policy; negative quantity selects the corrected policy. The search prioritizes fewer changes from the supplied baseline. Bounds are one to five distinct choices, 32 additional decisions, 128 edge attempts, 64 retained node records and 128MiB of retained guest memory. No unbounded correctness claim is made.\n\nExplore writes the root workspace.forkwake, search.json and nodes.json. Continue independently re-executes and verifies every declared earlier decision before resuming; it writes outcomes.json and, if still paused, a deep workspace.forkwake. Every supplied response must be consumed. Version-1 resume remains the original sibling-branch command. Output files contain actual guest memory or reports and should remain private when guest data is private.\n`;
+const sequenceHelp=`\nSequential effects:\n  forkwake explore-resume --checkpoint <search.forkwake> [--max-jobs 128] --out <new directory>\n\n  forkwake explore [--module <wasm>] [--input 4] [--alphabet 1,0,-1] [--baseline 1,1,1,1] [--goal 1] [--max-depth 4] [--max-jobs 128] --out <new directory>\n  forkwake continue --workspace <version-2 workspace.forkwake> --responses <comma-separated signed i32s> --out <new directory>\n\nExplore defaults to the compiled SQLite fulfillment example. Positive quantity selects its deliberately faulty policy; negative quantity selects the corrected policy. The search prioritizes fewer changes from the supplied baseline. Bounds are one to five distinct choices, 32 additional decisions, 128 edge attempts, 64 retained node records and 128MiB of retained guest memory. No unbounded correctness claim is made.\n\nExplore writes workspace.forkwake, search.forkwake, search.json and nodes.json. Resume with explore-resume into a new directory. Restart validation can execute up to 64 additional jobs, reported separately from --max-jobs; that budget does not bound total elapsed time. Unresolved failed or depth-limited work can prevent a minimum or exhaustion claim. Checksums detect corruption, not authorship. Checkpoints contain source and guest data; keep them private. Continue independently re-executes and verifies every declared earlier decision before resuming; it writes outcomes.json and, if still paused, a deep workspace.forkwake. Every supplied response must be consumed. Version-1 resume remains the original sibling-branch command. Output files contain actual guest memory or reports and should remain private when guest data is private.\n`;
 const scriptHelp=`\nJavaScript workflows:\n  forkwake capture --script <file.js> [--origin] [--input 1] --out <new directory>\n  forkwake explore --script <file.js> [--origin] [--input 1] [search options] --out <new directory>\n\nJavaScript source runs inside the owned QuickJS WebAssembly guest. Use decision(label,payload) for controlled effects, emit(string) for output, and resultI32 for the final signed i32 value. Script input defaults to seed 1. --origin opts into native caller-stack metadata; it can consume extra guest memory and influence GC/quota behavior. Existing captures default to the original untraced engine. Dynamic code, exact token columns, causal data flow and complete async ancestry are not inferred. --script and --module are mutually exclusive. Source must be valid UTF-8 and at most 1MiB. Capture writes a version-2 workspace.forkwake and nodes.json without searching; continue reopens it with no compiler or source file needed. Script errors are failed executions and never goal matches. The guest provides no Node.js, files, network, or native process cloning.\n`;
 function exact(value,keys,label){if(!value||typeof value!=='object'||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==keys.length||keys.some(key=>!Object.hasOwn(value,key)))throw Error(`Invalid ${label} fields`);}
 function i32Text(text,label){if(typeof text!=='string'||!/^(?:0|-[1-9][0-9]{0,9}|[1-9][0-9]{0,9})$/.test(text))throw Error(`${label} must be a decimal signed i32`);const value=Number(text);if(!Number.isInteger(value)||value< -2147483648||value>2147483647)throw Error(`${label} is outside the signed i32 range`);return value;}
@@ -27,9 +28,9 @@ function positiveText(text,label,maximum){if(!/^[1-9][0-9]{0,2}$/.test(text)||Nu
 export function parseArgs(argv){
  if(!Array.isArray(argv)||argv.some(arg=>typeof arg!=='string'))throw Error('Arguments must be strings');
  if(!argv.length||argv.length===1&&['help','--help','-h'].includes(argv[0]))return {command:'help'};
- const [command,...rest]=argv;if(!['serve','demo','run','resume','explore','continue','capture'].includes(command))throw Error(`Unknown command: ${command}`);
+ const [command,...rest]=argv;if(!['serve','demo','run','resume','explore','explore-resume','continue','capture'].includes(command))throw Error(`Unknown command: ${command}`);
  if(rest.length===1&&['--help','-h'].includes(rest[0]))return {command:'help'};
- const allowed={serve:['--port'],demo:['--out','--memory'],run:['--module','--input','--responses','--out','--memory'],resume:['--workspace','--responses','--out','--memory'],explore:['--module','--script','--origin','--input','--alphabet','--baseline','--goal','--max-depth','--max-jobs','--out'],continue:['--workspace','--responses','--out'],capture:['--script','--origin','--input','--out']}[command];
+ const allowed={serve:['--port'],demo:['--out','--memory'],run:['--module','--input','--responses','--out','--memory'],resume:['--workspace','--responses','--out','--memory'],explore:['--module','--script','--origin','--input','--alphabet','--baseline','--goal','--max-depth','--max-jobs','--out'],'explore-resume':['--checkpoint','--max-jobs','--out'],continue:['--workspace','--responses','--out'],capture:['--script','--origin','--input','--out']}[command];
  const flags={};for(let index=0;index<rest.length;index++){
   const name=rest[index];if(!allowed.includes(name))throw Error(`Unknown ${command} option: ${name}`);if(Object.hasOwn(flags,name))throw Error(`Duplicate option: ${name}`);
   if(name==='--memory'||name==='--origin'){flags[name]=true;continue;}
@@ -47,6 +48,10 @@ export function parseArgs(argv){
   const alphabet=sequenceResponses(flags['--alphabet']??'1,0,-1',5),maxDepth=positiveText(flags['--max-depth']??'4','Maximum depth',MAX_SEQUENCE);
   const settings=searchSettings({alphabet,baseline:flags['--baseline']===undefined?Array(maxDepth).fill(alphabet[0]):sequenceResponses(flags['--baseline']),maxDepth,maxJobs:positiveText(flags['--max-jobs']??'128','Maximum jobs',128),goal:i32Text(flags['--goal']??'1','Goal')});
   return {command,out:path.resolve(flags['--out']),...(flags['--script']===undefined?{module:flags['--module']===undefined?fileURLToPath(new URL('examples/fulfillment/workflow.raw.wasm',ROOT)):path.resolve(flags['--module'])}:{script:path.resolve(flags['--script']),...(flags['--origin']?{origin:true}:{})}),input:i32Text(flags['--input']??(flags['--script']===undefined?'4':'1'),'Input'),settings};
+ }
+ if(command==='explore-resume'){
+  for(const name of ['--checkpoint','--out'])if(!Object.hasOwn(flags,name))throw Error(`Missing required option: ${name}`);
+  return {command,out:path.resolve(flags['--out']),checkpoint:path.resolve(flags['--checkpoint']),maxJobs:positiveText(flags['--max-jobs']??'128','Maximum jobs',128)};
  }
  if(command==='continue'){
   for(const name of ['--workspace','--responses','--out'])if(!Object.hasOwn(flags,name))throw Error(`Missing required option: ${name}`);
@@ -108,12 +113,7 @@ export function workerJob(request,{snapshotKey,trustedPrepared,signal,deadlineMs
 function cache(result){const prepared=result.internalPrepared;if(!prepared||prepared.metadata?.version!==2||prepared.metadata.validationPolicy!==POLICY)throw Error('Worker did not return the current validated transform cache');return prepared;}
 async function writeNew(filename,bytes,signal){if(signal?.aborted)throw Error('Interrupted before writing output');await fs.writeFile(filename,bytes,{flag:'wx',mode:0o600,signal});}
 async function createOutput(directory){try{await fs.mkdir(directory,{mode:0o700});}catch(error){if(error.code==='EEXIST')throw Error('Output directory already exists; choose a new directory');throw error;}}
-function actualReport(digest,memory,moduleBytes){return scriptReportFromMemory(moduleBytes,memory)??reportFulfillmentFromMemory(digest,memory)??reportFromMemory(digest,memory);}
-function publicNode(result,{nodeId,parentId=null,response=null,additionalResponses=[]},digest,moduleBytes){
- const report=actualReport(digest,result.snapshot?.memoryBase64??result.finalMemoryBase64,moduleBytes);
- if(report?.kind==='javascript'&&report.status==='error')throw Error(`JavaScript workflow failed: ${String(report.diagnostic||'guest script error').slice(0,2048)}`);
- return {nodeId,parentId,response,additionalResponses:[...additionalResponses],responses:result.summary.decisions.map(d=>d.response),status:result.snapshot?'captured':'completed',summary:result.summary,...(report?{report}:{})};
-}
+const publicNode=nodeFromResult;
 async function saveSequenceWorkspace(directory,{name,digest,moduleBase64,snapshot},signal){
  const workspace={schema:'forkwake.workspace',version:2,module:{name,sha256:digest,dataBase64:moduleBase64},snapshot,settings:{entry:snapshot.entry,args:snapshot.args},branches:[]};
  const encoded=JSON.stringify(workspace,null,2)+'\n';if(Buffer.byteLength(encoded)>WORKSPACE_BYTES)throw Error('Workspace exceeds the 64MiB export limit');
@@ -121,8 +121,12 @@ async function saveSequenceWorkspace(directory,{name,digest,moduleBase64,snapsho
 }
 async function writeJsonNew(filename,value,signal){const encoded=JSON.stringify(value,null,2)+'\n';if(Buffer.byteLength(encoded)>16*1024*1024)throw Error('Sequence report exceeds its 16MiB export limit');await writeNew(filename,encoded,signal);}
 async function executeSequence(options,signal){
- let original,bytes,name,script;
- if(options.command==='continue'){
+ let original,bytes,name,script,prior;
+ if(options.command==='explore-resume'){
+  prior=checkSearchWorkspace(JSON.parse((await readBounded(options.checkpoint,96*1024*1024,'Search checkpoint')).toString('utf8')));
+  bytes=validateWorkspace(prior.workspace,2);name=prior.workspace.module.name;
+  options={...options,settings:searchSettings({...prior.checkpoint.settings,maxJobs:options.maxJobs})};
+ }else if(options.command==='continue'){
   try{original=JSON.parse((await readBounded(options.workspace,WORKSPACE_BYTES,'Workspace')).toString('utf8'));}catch(error){if(error instanceof SyntaxError)throw Error('Workspace is not valid JSON');throw error;}
   bytes=validateWorkspace(original,2);name=original.module.name;
  }else if(options.script){
@@ -131,6 +135,22 @@ async function executeSequence(options,signal){
   const loaded=await loadScriptModule(source,{name:path.basename(options.script),origin:options.origin??false});bytes=Buffer.from(loaded.bytes);name=loaded.name;script={sourceSha256:loaded.sourceSha256,sourceBytes:loaded.sourceBytes,originTracing:loaded.script.originTracing};
   if(bytes.length>MODULE_BYTES||sha(bytes)!==loaded.sha256)throw Error('Script module identity or byte limit is invalid');
  }else{bytes=await readBounded(options.module,MODULE_BYTES,'Module');name=path.basename(options.module);if(name.length>256)throw Error('Module name is too long');}
+ if(['explore','explore-resume'].includes(options.command)){
+  await createOutput(options.out);
+  const result=await searchWorkspace({bytes,name,input:options.input,settings:options.settings,prior,signal,onCapture:workspace=>writeNew(path.join(options.out,'workspace.forkwake'),JSON.stringify(workspace,null,2)+'\n')});
+  const scriptInfo=scriptModuleInfo(bytes);
+  const execution={prefixIndependentlyReexecutedForImport:!!prior,importReexecutedDecisions:prior?.workspace.snapshot.decisions.length??0,branchPrefixReexecuted:false,preparationDeadlineMs:PREPARATION_DEADLINE_MS,workerDeadlineMs:DEADLINE_MS,transformPolicy:POLICY,...(scriptInfo?{script:{sourceSha256:scriptInfo.sourceSha256,sourceBytes:scriptInfo.sourceBytes,originTracing:scriptInfo.originTracing}}:{})};
+  // Search pause is intentionally exportable after the active worker has stopped.
+  await writeJsonNew(path.join(options.out,'nodes.json'),{schema:'forkwake.sequence-nodes',version:1,module:{name,sha256:sha(bytes)},execution,nodes:result.nodes});
+  await writeJsonNew(path.join(options.out,'search.json'),{schema:'forkwake.sequence-search',version:1,module:{name,sha256:sha(bytes)},execution,search:result.search,actual:result.actual,...(result.search.witnessNodeId?{witness:result.nodes.find(n=>n.nodeId===result.search.witnessNodeId)}:{})});
+  const filename=path.join(options.out,'search.forkwake'),temporary=filename+'.'+randomBytes(12).toString('hex')+'.pending';let ownedTemporary=false;
+  try{
+   const handle=await fs.open(temporary,'wx',0o600);ownedTemporary=true;
+   try{await handle.writeFile(encodeSearchWorkspace(result.checkpoint));await handle.sync();}finally{await handle.close();}
+   await fs.link(temporary,filename);
+  }finally{if(ownedTemporary)await fs.unlink(temporary).catch(error=>{if(error.code!=='ENOENT')throw error;});}
+  return {directory:options.out,checkpoint:'search.forkwake',search:'search.json',nodes:'nodes.json',workspace:'workspace.forkwake',...Object.fromEntries(['state','matched','minimalWithinBounds','witnessResponses','witnessCost','executed','totalExecuted'].filter(k=>Object.hasOwn(result.search,k)).map(k=>[k,result.search[k]]))};
+ }
  const digest=sha(bytes),moduleBase64=bytes.toString('base64'),snapshotKey=randomBytes(32).toString('hex');
  await createOutput(options.out);let complete=false;
  try{
@@ -154,29 +174,6 @@ async function executeSequence(options,signal){
    await writeJsonNew(path.join(options.out,'outcomes.json'),{schema:'forkwake.sequence-outcomes',version:1,operation:'continue',module:{name,sha256:digest},execution,imported:root,providedResponses:options.responses,steps,final,scope:'Actual resumed sequence. Deep import independently validates earlier declared decisions; only subsequent decisions resume without prefix replay.'},signal);
    complete=true;return {directory:options.out,status:final.status,outcomes:'outcomes.json',...(current?{workspace:'workspace.forkwake'}:{}),consumedResponses:steps.length,importReexecutedDecisions:execution.importReexecutedDecisions};
   }
-  await saveSequenceWorkspace(options.out,{name,digest,moduleBase64,snapshot:captured.snapshot},signal);
-  const snapshots=new Map([['n0',captured.snapshot]]),nodes=[root],edges=new Map(),remaining=new Map([['n0',options.settings.alphabet.length]]);
-  let retainedBytes=captured.summary.memoryBytes,peakRetainedBytes=retainedBytes,workerJobs=1;captured=null;
-  if(retainedBytes>RETAINED_MEMORY_BYTES)throw Error('Root continuation exceeds the retained memory limit');
-  const release=id=>{const snapshot=snapshots.get(id);if(snapshot){retainedBytes-=Buffer.byteLength(snapshot.memoryBase64,'base64');snapshots.delete(id);}};
-  const search=await searchFutures({root,settings:options.settings,signal,advance:async(parent,response)=>{
-   const edgeKey=`${parent.nodeId}:${response}`;if(edges.has(edgeKey))return {...edges.get(edgeKey),reused:true};
-   if(nodes.length>=MAX_NODES)throw Error('The 64-node retention limit prevents this edge; search coverage is incomplete');
-   const snapshot=snapshots.get(parent.nodeId);if(!snapshot)throw Error('Paused parent continuation is no longer retained');
-   try{
-    workerJobs++;const result=await executeJob({operation:'sequence-advance',moduleBase64,snapshot,response},{snapshotKey,trustedPrepared:prepared,signal,prepareDeadlineMs:PREPARATION_DEADLINE_MS,deadlineMs:DEADLINE_MS});
-    const node=publicNode(result,{nodeId:`n${nodes.length}`,parentId:parent.nodeId,response,additionalResponses:[...parent.additionalResponses,response]},digest,bytes);
-    if(result.snapshot&&node.additionalResponses.length<options.settings.maxDepth){
-     if(remaining.get(parent.nodeId)===1)release(parent.nodeId);
-     if(retainedBytes+result.summary.memoryBytes>RETAINED_MEMORY_BYTES)throw Error('The resulting cut exceeds the 128MiB retained memory limit');snapshots.set(node.nodeId,result.snapshot);retainedBytes+=result.summary.memoryBytes;peakRetainedBytes=Math.max(peakRetainedBytes,retainedBytes);remaining.set(node.nodeId,options.settings.alphabet.length);
-    }
-    // Completed result memory has no further role here; retain only actual report and hashes.
-    nodes.push(node);edges.set(edgeKey,node);return node;
-   }finally{const left=remaining.get(parent.nodeId)-1;remaining.set(parent.nodeId,left);if(left===0)release(parent.nodeId);}
-  }});
-  await writeJsonNew(path.join(options.out,'nodes.json'),{schema:'forkwake.sequence-nodes',version:1,module:{name,sha256:digest},nodes},signal);
-  await writeJsonNew(path.join(options.out,'search.json'),{schema:'forkwake.sequence-search',version:1,module:{name,sha256:digest},execution,search,limits:{nodeRecords:MAX_NODES,retainedGuestMemoryBytes:RETAINED_MEMORY_BYTES},actual:{workerJobs,nodeRecords:nodes.length,peakRetainedGuestMemoryBytes:peakRetainedBytes,retainedPausedCuts:snapshots.size},...(search.witnessNodeId?{witness:nodes.find(n=>n.nodeId===search.witnessNodeId)}:{})},signal);
-  complete=true;return {directory:options.out,workspace:'workspace.forkwake',search:'search.json',nodes:'nodes.json',matched:search.matched,minimalWithinBounds:search.minimalWithinBounds,...(search.witnessResponses?{witnessResponses:search.witnessResponses,witnessCost:search.witnessCost}:{}),executed:search.executed};
  }finally{if(!complete){try{await fs.rmdir(options.out);}catch{/* Keep partial owned exports for inspection and portable recovery. */}}}
 }
 async function execute(options,signal){
@@ -215,7 +212,7 @@ export async function main(argv=process.argv.slice(2)){
   if(options.command==='serve'){
    const {createServer}=await import('./server.mjs');const app=await createServer({port:options.port});console.log('Open '+app.origin);
    try{if(!controller.signal.aborted)await new Promise(resolve=>controller.signal.addEventListener('abort',resolve,{once:true}));}finally{await app.close();}
-  }else{const result=await (['explore','continue','capture'].includes(options.command)?executeSequence(options,controller.signal):execute(options,controller.signal));console.log(JSON.stringify(result));}
+  }else{const result=await (['explore','explore-resume','continue','capture'].includes(options.command)?executeSequence(options,controller.signal):execute(options,controller.signal));console.log(JSON.stringify(result));}
  }catch(error){if(interrupted)process.exitCode=interrupted==='SIGINT'?130:143;throw error;}
  finally{process.removeListener('SIGINT',onInt);process.removeListener('SIGTERM',onTerm);if(interrupted&&!process.exitCode)process.exitCode=interrupted==='SIGINT'?130:143;}
 }

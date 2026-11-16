@@ -19,7 +19,7 @@ Actual installed interface, three held views. The authored checkout reaches unpa
 
 ## Run it
 
-Node.js 20 or newer. No account, API key or compiler required.
+Node.js 20 or newer. The first `npm ci` downloads the locked dependency; after installation the examples run locally. No account, API key or compiler is required. Current source is unreleased `0.4.2-dev.0`; the historical 0.4.1 package does not include search checkpoint resume.
 
 ```sh
 git clone https://github.com/nazeeh111/Forkwake.git
@@ -37,7 +37,7 @@ For the checkout shown above, select **Load Origin example** before capture. Sea
 | Capability | What it gives you |
 | --- | --- |
 | **Live branches** | Independent continuations of the same suspended stack, memory, globals and owned event history. |
-| **Finite search** | Actual response sequences, outputs and declared coverage, ordered by changes from your baseline. |
+| **Finite search** | Actual response sequences, outputs and declared coverage, ordered by changes from your baseline. Save and resume an unfinished frontier. |
 | **Origin** | Optional JavaScript caller frames mapped to the exact captured source, including after a draft is edited. |
 | **Portable cuts** | Save a paused decision, reopen it with an independent replay check, then continue it. |
 
@@ -57,12 +57,16 @@ resultI32 = account.balance < 0 ? 1 : 0;
 `decision` suspends for a controlled integer reply. `emit` records the latest output; `resultI32` is the ending searched by the CLI and interface.
 
 ```sh
-node cli.mjs capture --script ./workflow.js --out ./first-cut
+node cli.mjs capture --script ./examples/javascript/workflow.js --out ./first-cut
 node cli.mjs continue --workspace ./first-cut/workspace.forkwake \
   --responses 1 --out ./approved
 node cli.mjs explore --script ./examples/javascript/workflow.js \
-  --alphabet 1,0,-1 --baseline 1,1,1,1 --goal 1 --max-depth 4 --out ./transfer-search
+  --alphabet 1,0,-1 --baseline 1,1,1,1 --goal 1 --max-depth 4 --max-jobs 1 --out ./transfer-search
+node cli.mjs explore-resume --checkpoint ./transfer-search/search.forkwake \
+  --max-jobs 128 --out ./continued-search
 ```
+
+Capture saves a paused decision, while explore runs a bounded search and writes `search.forkwake`. Resume continues that same source-bound frontier into a new directory. Restart independently validates earlier nodes: up to 64 validation jobs are separate from the new edge-attempt budget, so `--max-jobs` does not bound total time. Failed or depth-limited work remains unresolved and can prevent a minimum or exhaustion claim. Checkpoint checksums detect corruption, not authorship; files contain source and guest data, so keep sensitive checkpoints private. [Checkpoint contract](docs/sequence-cli.md#pause-the-search-then-resume-its-frontier).
 
 Output directories must be new. [JavaScript contract](examples/javascript/README.md) · [CLI guide](docs/javascript-cli.md) · [SQLite example](examples/fulfillment/README.md) · [Origin walkthrough](docs/origin.md) · [Timeout witness → regression test](docs/timeout-regression.md)
 
