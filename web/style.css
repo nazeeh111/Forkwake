@@ -11,3 +11,13 @@
 /* Single-cut companion to the execution map. */
 body{font-size:14px;background:#f6f8fc;color:#202a3b}.topbar{padding:18px 28px;border-bottom:2px solid #202a3b;background:white;max-width:1800px}.brand-dot{color:#2458da}.intro{padding:30px 0 26px;align-items:center}.intro h1{font-size:clamp(29px,3vw,43px);font-weight:700;line-height:1.08;letter-spacing:-1.5px}.intro h1 span{color:#526077}.intro>p{font-size:14px;line-height:1.65}.eyebrow{color:#2458da}.panel{border-radius:0}.setup{border-top:3px solid #2458da}.stage{border-top:3px solid #202a3b}.inspect{border-radius:0}.button{border-radius:3px;min-height:38px;font-size:12px}.primary{background:#2458da;border-color:#2458da;color:white}.primary:hover{background:#1848bd}.ink{background:#202a3b;color:white}.empty-stage{background:white}.empty-drawing{filter:grayscale(1)}.empty-cut{color:white;background:#2458da}.prefix-node,.cut-node,.branch-card{border-radius:3px}.cut-node{border-color:#2458da;background:#edf2ff}.prefix-node{background:#f3f6fc}.node-icon{border-color:#8190a8}.status-pill.live{color:#2458da;background:#edf2ff;border-color:#819ce1}.response-presets button{background:white;border-color:#8190a8}.hash,.micro,.subtle{color:#526077}.inspect .metric{border-radius:2px}.branch-card.selected{outline-color:#2458da}.empty-stage p{font-size:13px}main{padding:0 28px;max-width:1800px}footer{font-size:12px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline-color:#2458da}
 @media(max-width:760px){.topbar{padding:16px;gap:12px}main{padding:0 16px}.intro{padding:26px 0 24px}.intro h1{font-size:33px;letter-spacing:-1px}.intro>p{font-size:14px}.workspace{grid-template-columns:1fr}.empty-stage{min-height:300px}.top-note{display:none}}
+
+/* Keep the execution-tree entry and workspace import available on narrow screens. */
+@media (max-width: 760px) {
+  .topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
+  .topbar .brand { grid-column: 1 / -1; grid-row: 1; justify-self: start; }
+  .top-note { display: flex; grid-column: 1; grid-row: 2; }
+  .top-note a { padding: 4px 0; font-size: 12px; }
+  .top-note .version { display: none; }
+  .topbar > .button { grid-column: 2; grid-row: 2; white-space: nowrap; }
+}

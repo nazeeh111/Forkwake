@@ -81,3 +81,7 @@ footer{font-size:12px;padding:24px 0 28px}footer p{line-height:1.7}
 
 .workspace-jumps{display:none}h2{scroll-margin-top:18px}@media(max-width:1000px){.workspace-jumps{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}.workspace-jumps a{font-size:12px;padding:9px 12px;background:white;color:var(--blue);border:1px solid #8190a8;text-decoration:none}.workspace-jumps a:focus-visible{outline:3px solid var(--blue);outline-offset:3px}}@media(max-width:760px){.intro h1{font-size:29px}.intro{padding-bottom:20px}}
 @media(min-width:1001px){.prepare{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;overscroll-behavior:contain;scrollbar-color:#8998b3 #f4f6fc}}
+
+/* Keep the response path and runtime evidence legible inside the scrollable tree. */
+.tree-node .node-kicker, .tree-node .node-detail, .tree-node .node-path,
+.tree-node .incoming, .depth-heading { font-size: 12px; }
