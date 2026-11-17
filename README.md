@@ -6,16 +6,18 @@
 [![Origin: captured callers](https://img.shields.io/badge/Origin-captured%20callers-3155c7?style=flat-square)](docs/origin.md)
 [![MIT](https://img.shields.io/badge/license-MIT-30343b?style=flat-square)](LICENSE)
 
-**Pause a live program. Branch its next decision. Find the ending that breaks your rule.**
+**Save a live decision. Reopen it. Follow a different ending.**
 
-Run JavaScript or a compatible WebAssembly program in a closed local runtime. Forkwake preserves its suspended stack and memory, tries alternative replies, and shows the resulting execution tree. Nothing calls a real payment or shipment service.
+Forkwake branches JavaScript and compatible WebAssembly execution inside a closed local runtime. Its portable cuts preserve the suspended stack, memory and globals, so you can inspect how the same program state responds to different replies.
 
 <picture>
-  <source media="(prefers-reduced-motion: reduce)" srcset="docs/futures-workbench.jpg">
-  <img src="docs/futures-walkthrough.gif" alt="Forkwake's actual checkout example: explore alternative decisions, inspect dispatch callers, and read an outcome with paid false and dispatched true.">
+  <source media="(max-width: 600px)" srcset="docs/presentation/same-cut-mobile.png">
+  <img src="docs/presentation/same-cut.png" alt="Actual synthetic transfer: one saved Confirm transfer cut branches to approval, sender 75 plus recipient 45 equals 120, result 0; or two timeouts, sender 75 plus recipient 20 equals 95, result 1. Import validates one earlier decision once before branching.">
 </picture>
 
-Actual installed interface, three held views. The authored checkout reaches unpaid dispatch after replies `1, -1, -1, 1`. [Still](docs/futures-workbench.jpg) · [Mobile](docs/futures-mobile-tree.jpg) · [Reproduce the recording](docs/demos/README.md)
+The included transfer reserves `25`, then pauses at **Confirm transfer**. Reopening that same cut with replies `1,1` conserves the initial total: `75 + 45 = 120`. Replies `-1,-1,1` expose its deliberately faulty timeout policy: `75 + 20 = 95`, `conserved: false`, return `1`. These are modeled values; no real payment service runs.
+
+[Reproduce both endings](docs/presentation/README.md) · [Actual output and source identity](docs/presentation/paired-outcomes.json) · [Vector figure](docs/presentation/same-cut.svg)
 
 ## Run it
 
@@ -30,7 +32,15 @@ npm start
 
 Open **`/futures`** at the printed address. Capture the loaded JavaScript transfer, search for return `1`, then inspect the named requests and emitted ledger. Two timeout replies expose its deliberately faulty debit policy. Load the corrected example to compare.
 
-For the checkout shown above, select **Load Origin example** before capture. Search with replies `1,0,-1`, baseline `1,1,1,1`, goal `1` and an additional decision limit of `4`. Select the unpaid-dispatch ending and open **Origin** to inspect its recorded callers and captured source. A partial search reports unresolved work; it does not establish the absence of a failure.
+For the separate checkout example, select **Load Origin example** before capture. Search with replies `1,0,-1`, baseline `1,1,1,1`, goal `1` and an additional decision limit of `4`. Select the unpaid-dispatch ending and open **Origin** to inspect its recorded callers and captured source. A partial search reports unresolved work; it does not establish the absence of a failure.
+
+## The execution tree behind the record
+
+[Inspect the actual workbench capture](docs/presentation/workbench-current.png): six tree moments, both endings, and the selected timeout ledger.
+
+This workbench run reopened the CLI's exported cut, then created both branches in the interface. The workflow carries a closure, a self-referencing account and a Map keyed by that account across this decision, and crosses Promise steps before and after it. The program checks object identity before publishing each ending. A portable import independently reexecutes and verifies the earlier prefix once. Branches after that import resume the verified continuation. These checks cover this owned workflow, not arbitrary host programs.
+
+The separate [checkout walkthrough](docs/demos/README.md) shows Origin's caller frames and an unpaid-dispatch witness. [Animated recording](docs/futures-walkthrough.gif) · [Still](docs/futures-workbench.jpg).
 
 ## What you can inspect
 
